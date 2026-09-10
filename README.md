@@ -15,8 +15,8 @@
 | 层次 | 选型 | 版本 |
 |---|---|---|
 | 语言 | Java | 17 |
-| 框架 | Spring Boot | 3.x |
-| 持久层 | MyBatis-Plus | 3.5.x |
+| 框架 | Spring Boot | 4.x |
+| 持久层 | MyBatis-Plus | 3.5.17 |
 | 数据库 | MySQL | 8.x |
 | 缓存 | Redis | 7.x（后续阶段） |
 | 认证 | JWT（后续阶段） | — |
@@ -26,7 +26,7 @@
 ## 分层结构约定
 
 ```
-com.campusmart
+com.itcjj.campusmart
 ├── controller     接口层：参数校验、调用 service、返回统一响应
 ├── service        业务层：业务规则、事务边界
 │   └── impl

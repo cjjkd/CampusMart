@@ -6,9 +6,12 @@ out/
 *.jar
 *.war
 *.ear
-!.mvn/wrapper/maven-wrapper.jar
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.properties
+HELP.md
+
+# ---- Maven Wrapper 必须入库（必须放在 *.jar 之后，否则会被上面的规则吃掉）----
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
 
 # ---- IDE ----
 .idea/

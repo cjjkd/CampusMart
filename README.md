@@ -45,9 +45,23 @@ com.campusmart
 
 ## 数据库设计
 
-详见 [`docs/er-diagram.md`](docs/er-diagram.md)。
-
 七张核心表：`user` / `category` / `product` / `order` / `order_item` / `favorite` / `review`
+
+```mermaid
+erDiagram
+    USER ||--o{ PRODUCT : "发布"
+    USER ||--o{ ORDERS : "下单"
+    USER ||--o{ FAVORITE : "收藏"
+    USER ||--o{ REVIEW : "评价"
+    CATEGORY ||--o{ PRODUCT : "归类"
+    PRODUCT ||--o{ ORDER_ITEM : "被购买"
+    PRODUCT ||--o{ FAVORITE : "被收藏"
+    PRODUCT ||--o{ REVIEW : "被评价"
+    ORDERS ||--|{ ORDER_ITEM : "包含"
+```
+
+> - 完整字段定义（字段、类型、注释、索引规划）见 [`docs/er-diagram.md`](docs/er-diagram.md)
+> - 注：`order` 是 MySQL 保留字，物理表名建议用 `orders`，Day 3 建表时确认
 
 ## 进度
 

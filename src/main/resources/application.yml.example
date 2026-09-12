@@ -1,0 +1,35 @@
+# ============================================================
+# CampusMart 配置模板
+#
+# 真正的 application.yml 里写着数据库密码，所以不提交到 git。
+# 别人克隆项目后，照这个文件复制一份、填上自己的密码：
+#
+#   Windows:  copy application.yml.example application.yml
+#   Mac/Linux: cp application.yml.example application.yml
+# ============================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: CampusMart
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 注意最后的四个参数，缺一个都可能连不上（详见 README）
+    url: jdbc:mysql://localhost:3306/campusmart?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 换成你自己的数据库密码
+
+mybatis-plus:
+  configuration:
+    # 数据库下划线 → Java 驼峰（create_time → createTime）
+    map-underscore-to-camel-case: true
+    # 把执行的 SQL 打到控制台，学习期开着方便看
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      # 逻辑删除：删除时改成 deleted=1，查询自动加 WHERE deleted=0
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0

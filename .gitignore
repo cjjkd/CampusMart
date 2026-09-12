@@ -43,6 +43,9 @@ application-local.properties
 application-prod.yml
 *-secret.yml
 .env
+# 本地 application.yml 里写着明文数据库密码 → 不入库
+# 别人 clone 后照 application.yml.example 复制一份填上自己的密码即可
+src/main/resources/application.yml
 
 # ---- 其他 ----
 node_modules/

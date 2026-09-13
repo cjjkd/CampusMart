@@ -1,0 +1,42 @@
+### ============================================================
+### CampusMart 接口测试文件（IDEA HTTP Client）
+###
+### 用法：在 IDEA 里打开本文件，点每条请求左边的绿色三角即可发送
+### 好处：不用装 Postman、不用碰命令行、请求可以提交到仓库当接口文档
+### ============================================================
+
+
+### 连通性测试
+GET http://localhost:8080/hello
+
+
+### 查询用户列表
+GET http://localhost:8080/user/list
+
+
+### 新增用户
+POST http://localhost:8080/user/add
+Content-Type: application/json
+
+{
+  "username": "lisi",
+  "password": "123456",
+  "nickname": "Li Si",
+  "phone": "13900139000",
+  "campus": "North"
+}
+
+
+### 修改用户（只传要改的字段，其他字段不会被清空）
+PUT http://localhost:8080/user/update
+Content-Type: application/json
+
+{
+  "id": 2,
+  "nickname": "Li Si Updated",
+  "campus": "South"
+}
+
+
+### 删除用户（逻辑删除，数据不会真的消失）
+DELETE http://localhost:8080/user/delete/2

@@ -61,20 +61,38 @@ erDiagram
 ```
 
 > - 完整字段定义（字段、类型、注释、索引规划）见 [`docs/er-diagram.md`](docs/er-diagram.md)
-> - 注：`order` 是 MySQL 保留字，物理表名建议用 `orders`，Day 3 建表时确认
+> - 注：`order` 是 MySQL 保留字，物理表名用 `orders`
+> - 已完成建表：`user`（见 [`sql/init.sql`](sql/init.sql)）
+
+## 已实现接口
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/hello` | 连通性测试 |
+| GET | `/user/list` | 查询用户列表 |
+| POST | `/user/add` | 新增用户 |
+| PUT | `/user/update` | 修改用户（只更新传入的字段）|
+| DELETE | `/user/delete/{id}` | 删除用户（逻辑删除，数据不真删）|
+
+统一响应格式：`{"code": 0, "msg": "ok", "data": ...}`，`code = 0` 表示成功。
 
 ## 进度
 
 ### Phase 1 · Java 后端基础
 
-- [x] **Week 00 · 起手**
+- [x] **Week 00 · 起手**（9.10 ~ 9.13）
   - [x] Java 异常 / IO / Jackson JSON
+  - [x] 集合框架（ArrayList vs LinkedList / HashMap 底层 / HashSet / 泛型擦除）
+  - [x] 并发基础（线程创建与生命周期 / 竞态条件 / synchronized / volatile / 线程池）
   - [x] 仓库初始化 + README 骨架
-  - [x] ER 图设计与评审
+  - [x] ER 图设计与评审（7 张表）
   - [x] `.gitignore` + Git 提交规范
-  - [ ] Spring Boot 工程骨架（Day 2）
-  - [ ] 用户表 CRUD 打通（Day 3）
-- [ ] Week 01 · 待补充
+  - [x] Spring Boot 工程骨架（4.1.1 + Java 17 + Maven）
+  - [x] 接入 MySQL + MyBatis-Plus（逻辑删除、时间字段自动填充）
+  - [x] **用户模块 CRUD 四个接口跑通**
+- [ ] **Week 01 · 用户认证**（9.14 ~ 9.20）
+  - 目标：分层规范 / 统一响应 / 全局异常处理 / JWT 注册登录 / 角色权限
+- [ ] Week 02 · 待补充
 
 ### Phase 2 · 业务开发
 

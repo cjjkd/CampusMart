@@ -76,6 +76,29 @@ erDiagram
 
 统一响应格式：`{"code": 0, "msg": "ok", "data": ...}`，`code = 0` 表示成功。
 
+### 错误码分段规划
+
+| 段位 | 用途 |
+|---|---|
+| `0` | 成功 |
+| `4xx` | 参数错误 / 无权限 |
+| `5xx` | 服务端异常 |
+| `10xx` | user 模块 |
+| `20xx` | product 模块 |
+| `30xx` | order 模块 |
+
+已定义错误码见 [`common/CodeEnum.java`](src/main/java/com/itcjj/campusmart/common/CodeEnum.java)：
+`0` 成功 ｜ `1001` 用户名已存在 ｜ `1002` 用户不存在
+
+> 业务异常与未预料的异常（空指针、数据库断开等）一律由
+> [`GlobalExceptionHandler`](src/main/java/com/itcjj/campusmart/exception/GlobalExceptionHandler.java)
+> 统一捕获并转换为上述格式，**Controller 层不写 try-catch**。
+
+```jsonc
+// POST /user/add —— 用户名重复时的实际返回
+{"code": 1001, "msg": "用户名已存在", "data": null}
+```
+
 ## 进度
 
 ### Phase 1 · Java 后端基础
@@ -92,6 +115,15 @@ erDiagram
   - [x] **用户模块 CRUD 四个接口跑通**
 - [ ] **Week 01 · 用户认证**（9.14 ~ 9.20）
   - 目标：分层规范 / 统一响应 / 全局异常处理 / JWT 注册登录 / 角色权限
+  - [x] **Day 1 · 分层规范 + 统一响应 + 全局异常处理**
+    - [x] `Result<T>` 统一响应体 + `CodeEnum` 错误码枚举
+    - [x] `BizException` 业务异常 + `GlobalExceptionHandler` 全局兜底
+    - [x] 用户名唯一性校验（Service 层抛异常，Controller 零 try-catch）
+  - [ ] Day 2 · JWT 原理 + 注册 / 登录接口
+  - [ ] Day 3 · 拦截器 + ThreadLocal 用户上下文
+  - [ ] Day 4 · 参数校验 + 角色权限控制
+  - [ ] Day 5 · BCrypt 密码加密 + 用户信息管理
+  - [ ] Day 6 · Git 分支模型 + 用户模块自测
 - [ ] Week 02 · 待补充
 
 ### Phase 2 · 业务开发

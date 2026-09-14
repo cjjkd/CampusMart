@@ -1,7 +1,10 @@
 package com.itcjj.campusmart.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.dto.UserDTO;
 import com.itcjj.campusmart.entity.User;
+import com.itcjj.campusmart.exception.BizException;
 import com.itcjj.campusmart.mapper.UserMapper;
 import com.itcjj.campusmart.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,14 @@ public class UserServiceImpl implements UserService {
     }
     @Override
     public void add(UserDTO dto){
+        // 检查用户名是否已存在
+        Long count = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername()));
+        if (count > 0) {
+            throw new BizException(CodeEnum.USERNAME_EXIST);
+        }
+
+        // 设置用户信息
         User user=new User();
         user.setUsername(dto.getUsername());
         user.setPassword(dto.getPassword());

@@ -2,11 +2,13 @@ package com.itcjj.campusmart.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.itcjj.campusmart.common.CodeEnum;
+import com.itcjj.campusmart.dto.LoginDTO;
 import com.itcjj.campusmart.dto.UserDTO;
 import com.itcjj.campusmart.entity.User;
 import com.itcjj.campusmart.exception.BizException;
 import com.itcjj.campusmart.mapper.UserMapper;
 import com.itcjj.campusmart.service.UserService;
+import com.itcjj.campusmart.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,8 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Override
     public List<User> listAll() {
@@ -52,5 +56,21 @@ public class UserServiceImpl implements UserService {
     @Override
     public void delete(Long id){
         userMapper.deleteById(id);
+    }
+
+    @Override
+    public String login(LoginDTO dto) {
+        // 实现登录逻辑
+        //第一步，按用户名查出这个用户
+        User user = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername()));
+        //第二步，没这个人，抛异常
+        //第三步，密码错误，抛异常
+        if (user == null || !user.getPassword().equals(dto.getPassword())) {
+            throw new BizException(CodeEnum.LOGIN_FAILED);
+        }
+
+        //第四步：都过了，生成并且返回token
+        return jwtUtil.createToken(user.getId());
     }
 }

@@ -33,3 +33,12 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+# JWT 配置
+campusmart:
+  jwt:
+    # 签名密钥：至少 32 个字符（越长的密钥算法会自动升级，见 notes）
+    # 生产环境务必换成随机长字符串，且绝不能提交到 git
+    secret: 换成你自己的随机密钥至少32个字符
+    # token 有效期，单位毫秒。604800000 = 7 天
+    expire: 604800000

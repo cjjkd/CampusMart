@@ -1,6 +1,7 @@
 package com.itcjj.campusmart.controller;
 
 import com.itcjj.campusmart.common.Result;
+import com.itcjj.campusmart.dto.LoginDTO;
 import com.itcjj.campusmart.dto.UserDTO;
 import com.itcjj.campusmart.entity.User;
 import com.itcjj.campusmart.service.UserService;
@@ -41,5 +42,15 @@ public class UserController {
         userService.delete(id);
         return Result.success(null);
     }
-
+    // 登录
+    @PostMapping("/login")
+    public Result<String> login(@RequestBody LoginDTO dto) {
+        return Result.success(userService.login(dto));
+    }
+    // 注册
+    @PostMapping("/register")
+    public Result<Void> register(@RequestBody UserDTO dto) {
+        userService.add(dto);
+        return Result.success(null);
+    }
 }

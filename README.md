@@ -119,7 +119,11 @@ erDiagram
     - [x] `Result<T>` 统一响应体 + `CodeEnum` 错误码枚举
     - [x] `BizException` 业务异常 + `GlobalExceptionHandler` 全局兜底
     - [x] 用户名唯一性校验（Service 层抛异常，Controller 零 try-catch）
-  - [ ] Day 2 · JWT 原理 + 注册 / 登录接口
+  - [x] **Day 2 · JWT 原理 + 注册 / 登录接口**
+    - [x] `JwtUtil`（jjwt 0.12.6）：签发 / 解析 token
+    - [x] `POST /user/login` 登录接口（签发 token）
+    - [x] `POST /user/register` 注册接口
+    - [x] 登录失败统一提示「用户名或密码错误」，不泄漏用户名是否存在
   - [ ] Day 3 · 拦截器 + ThreadLocal 用户上下文
   - [ ] Day 4 · 参数校验 + 角色权限控制
   - [ ] Day 5 · BCrypt 密码加密 + 用户信息管理

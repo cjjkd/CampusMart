@@ -1,5 +1,6 @@
 package com.itcjj.campusmart.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
@@ -13,6 +14,7 @@ public class User {
     //标记主键
     private Long id;
     private String username;
+    @JsonIgnore
     private String password;
     private String nickname;
     private String phone;

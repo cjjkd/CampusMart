@@ -9,6 +9,7 @@ import com.itcjj.campusmart.exception.BizException;
 import com.itcjj.campusmart.mapper.UserMapper;
 import com.itcjj.campusmart.service.UserService;
 import com.itcjj.campusmart.util.JwtUtil;
+import com.itcjj.campusmart.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -73,4 +74,10 @@ public class UserServiceImpl implements UserService {
         //第四步：都过了，生成并且返回token
         return jwtUtil.createToken(user.getId());
     }
+    @Override
+    public User getCurrentUser() {
+        Long userId = UserContext.get();      // 👈 关键在这行
+        return userMapper.selectById(userId);
+    }
+
 }

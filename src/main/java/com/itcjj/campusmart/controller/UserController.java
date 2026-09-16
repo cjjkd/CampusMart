@@ -53,4 +53,9 @@ public class UserController {
         userService.add(dto);
         return Result.success(null);
     }
+    @GetMapping("/me")
+    public Result<User> me() {
+        return Result.success(userService.getCurrentUser());
+    }
+
 }

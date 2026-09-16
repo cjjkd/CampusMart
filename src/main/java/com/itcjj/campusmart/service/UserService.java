@@ -12,4 +12,6 @@ public interface UserService{
     void update(UserDTO dto);
     void delete(Long id);
     String login (LoginDTO dto);
+    User getCurrentUser();
+
 }

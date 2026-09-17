@@ -25,8 +25,9 @@ mybatis-plus:
   configuration:
     # 数据库下划线 → Java 驼峰（create_time → createTime）
     map-underscore-to-camel-case: true
-    # 把执行的 SQL 打到控制台，学习期开着方便看
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 走日志框架，可以按级别开关（见文件末尾 logging 配置）
+    # 想直接看 SQL：把下面的 com.itcjj.campusmart.mapper 改成 debug
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       # 逻辑删除：删除时改成 deleted=1，查询自动加 WHERE deleted=0
@@ -42,3 +43,20 @@ campusmart:
     secret: 换成你自己的随机密钥至少32个字符
     # token 有效期，单位毫秒。604800000 = 7 天
     expire: 604800000
+
+# ============ 日志配置 ============
+logging:
+  level:
+    root: info
+    # 自己的代码：想看更细的流程改成 debug
+    com.itcjj.campusmart: info
+    # MyBatis 的 SQL 日志（logger 名 = Mapper 接口全限定名）
+    # 默认 warn = 不打印 SQL；排查 SQL 问题时改成 debug 就能看到
+    com.itcjj.campusmart.mapper: warn
+    # 框架噪音：压到 warn，只在真出问题时才出声
+    org.apache.ibatis: warn
+    com.zaxxer.hikari: warn
+    org.springframework.web: warn
+  pattern:
+    # 比默认格式精简：去掉进程号，时间只留时分秒，logger 名截短
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

@@ -1,11 +1,15 @@
 package com.itcjj.campusmart.controller;
 
+import com.itcjj.campusmart.annotation.RequireAdmin;
 import com.itcjj.campusmart.common.Result;
 import com.itcjj.campusmart.dto.LoginDTO;
 import com.itcjj.campusmart.dto.UserDTO;
+import com.itcjj.campusmart.dto.ValidGroup;
 import com.itcjj.campusmart.entity.User;
 import com.itcjj.campusmart.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,20 +22,21 @@ public class UserController {
     private UserService userService;
 
     // 获取用户列表
+    @RequireAdmin
     @GetMapping("/list")
     public Result<List<User>> list() {
         return Result.success(userService.listAll());
     }
     // 添加用户
     @PostMapping("/add")
-    public Result<Void> add(@RequestBody UserDTO dto) {
+    public Result<Void> add(@Validated(ValidGroup.Create.class) @RequestBody UserDTO dto) {
         userService.add(dto);
         return Result.success(null);
     }
 
     // 更新用户
     @PutMapping("/update")
-    public Result<Void> update(@RequestBody UserDTO dto) {
+    public Result<Void> update(@Validated(ValidGroup.Update.class) @RequestBody UserDTO dto) {
         userService.update(dto);
         return Result.success(null);
     }
@@ -44,12 +49,12 @@ public class UserController {
     }
     // 登录
     @PostMapping("/login")
-    public Result<String> login(@RequestBody LoginDTO dto) {
+    public Result<String> login(@Valid@RequestBody LoginDTO dto) {
         return Result.success(userService.login(dto));
     }
     // 注册
     @PostMapping("/register")
-    public Result<Void> register(@RequestBody UserDTO dto) {
+    public Result<Void> register(@Validated(ValidGroup.Create.class) @RequestBody UserDTO dto) {
         userService.add(dto);
         return Result.success(null);
     }

@@ -2,6 +2,7 @@ package com.itcjj.campusmart.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.itcjj.campusmart.common.CodeEnum;
+import com.itcjj.campusmart.common.CurrentUser;
 import com.itcjj.campusmart.dto.LoginDTO;
 import com.itcjj.campusmart.dto.UserDTO;
 import com.itcjj.campusmart.entity.User;
@@ -10,11 +11,13 @@ import com.itcjj.campusmart.mapper.UserMapper;
 import com.itcjj.campusmart.service.UserService;
 import com.itcjj.campusmart.util.JwtUtil;
 import com.itcjj.campusmart.util.UserContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -25,8 +28,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> listAll() {
+        // 查询列表不打日志：会被翻页刷爆，没有留存价值
         return userMapper.selectList(null);
     }
+
     @Override
     public void add(UserDTO dto){
         // 检查用户名是否已存在
@@ -44,7 +49,11 @@ public class UserServiceImpl implements UserService {
         user.setPhone(dto.getPhone());
         user.setCampus(dto.getCampus());
         userMapper.insert(user);
+
+        // insert 后 id 已被 MP 回填，可以拿到。只记 id 和 username，绝不记密码
+        log.info("用户注册成功 -> id={}, username={}", user.getId(), user.getUsername());
     }
+
     @Override
     public void update(UserDTO dto){
         User user=new User();
@@ -53,10 +62,17 @@ public class UserServiceImpl implements UserService {
         user.setPhone(dto.getPhone());
         user.setCampus(dto.getCampus());
         userMapper.updateById(user);
+
+        // 只记 id：phone 属于个人信息，不进日志
+        log.info("用户资料更新 -> id={}", dto.getId());
     }
+
     @Override
     public void delete(Long id){
         userMapper.deleteById(id);
+
+        // 删除是敏感操作：记下「谁删了谁」，出问题能追溯
+        log.info("删除用户 -> 操作人={}, 目标用户={}", UserContext.get().getId(), id);
     }
 
     @Override
@@ -71,13 +87,17 @@ public class UserServiceImpl implements UserService {
             throw new BizException(CodeEnum.LOGIN_FAILED);
         }
 
+        // 登录成功记一笔（安全审计：谁、什么时候登录过）
+        log.info("用户登录成功 -> id={}, username={}", user.getId(), user.getUsername());
+
         //第四步：都过了，生成并且返回token
-        return jwtUtil.createToken(user.getId());
+        return jwtUtil.createToken(user.getId(),user.getRole());
     }
+
     @Override
     public User getCurrentUser() {
-        Long userId = UserContext.get();      // 👈 关键在这行
-        return userMapper.selectById(userId);
+        CurrentUser current = UserContext.get();// 👈 关键在这行
+        return userMapper.selectById(current.getId());
     }
 
 }

@@ -14,6 +14,7 @@ public class User {
     //标记主键
     private Long id;
     private String username;
+    private String role;
     @JsonIgnore
     private String password;
     private String nickname;

@@ -1,6 +1,7 @@
 package com.itcjj.campusmart.dto;
 
 
+import com.itcjj.campusmart.annotation.Phone;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -17,6 +18,7 @@ public class UserDTO {
     private String password;
     @Size(max=20, message="昵称长度在20个字符以内", groups = {ValidGroup.Create.class, ValidGroup.Update.class})
     private String nickname;
+    @Phone(message = "手机号格式不正确", groups = {ValidGroup.Create.class, ValidGroup.Update.class})
     private String phone;
     private String campus;
 

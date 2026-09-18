@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS `user`
     `campus`      VARCHAR(50)  DEFAULT NULL COMMENT '校区',
     `status`      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1正常 0禁用',
     `role`        VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '角色：USER普通用户 ADMIN管理员',
+    `token_version` INT        NOT NULL DEFAULT 0 COMMENT 'token 版本号：改密码时 +1，让旧 token 失效',
+
     `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',

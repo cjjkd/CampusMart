@@ -3,6 +3,7 @@ package com.itcjj.campusmart.controller;
 import com.itcjj.campusmart.annotation.RequireAdmin;
 import com.itcjj.campusmart.common.Result;
 import com.itcjj.campusmart.dto.LoginDTO;
+import com.itcjj.campusmart.dto.PasswordDTO;
 import com.itcjj.campusmart.dto.UserDTO;
 import com.itcjj.campusmart.dto.ValidGroup;
 import com.itcjj.campusmart.entity.User;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -41,7 +43,8 @@ public class UserController {
         return Result.success(null);
     }
 
-    // 删除用户
+    // 删除用户 —— 仅管理员可操作（删数据比看数据危险，必须收紧）
+    @RequireAdmin
     @DeleteMapping("/delete/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         userService.delete(id);
@@ -62,5 +65,18 @@ public class UserController {
     public Result<User> me() {
         return Result.success(userService.getCurrentUser());
     }
+
+    // 修改密码
+    @PutMapping("/password")
+    public Result<Void> updatePassword(@Valid @RequestBody PasswordDTO dto) {
+        userService.updatePassword(dto);
+        return Result.success(null);
+    }
+    // 上传头像
+    @PostMapping("/avatar")
+    public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        return Result.success(userService.uploadAvatar(file));
+    }
+
 
 }

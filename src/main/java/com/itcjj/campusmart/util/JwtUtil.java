@@ -20,10 +20,11 @@ public class JwtUtil {
     private long expire;
 
     // 生成 token：传入 userId，返回一串 JWT
-    public String createToken(Long userId, String role) {
+    public String createToken(Long userId, String role, Integer tokenVersion) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))                                // 放 userId
                 .claim("role", role)
+                .claim("ver", tokenVersion)
                 .issuedAt(new Date())                                           // 签发时间
                 .expiration(new Date(System.currentTimeMillis() + expire))      // 过期时间
                 .signWith(getKey())                                             // 用密钥签名

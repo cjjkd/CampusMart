@@ -3,7 +3,9 @@ package com.itcjj.campusmart.interceptor;
 import com.itcjj.campusmart.annotation.RequireAdmin;
 import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.common.CurrentUser;
+import com.itcjj.campusmart.entity.User;
 import com.itcjj.campusmart.exception.BizException;
+import com.itcjj.campusmart.mapper.UserMapper;
 import com.itcjj.campusmart.util.JwtUtil;
 import com.itcjj.campusmart.util.UserContext;
 import io.jsonwebtoken.Claims;
@@ -19,11 +21,20 @@ public class LoginInterceptor implements HandlerInterceptor {
 
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private UserMapper userMapper;
+
     @Override
 
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
                              Object handler) {
+
+        // 不是 Controller 方法 → 是静态资源（html / css / js / 图片），直接放行，不校验 token
+        // 为什么必须放行：index.html 里装着登录页，如果连它都要 token，用户永远进不来（死锁）
+        if (!(handler instanceof HandlerMethod)) {
+            return true;
+        }
 
         // 这里写校验逻辑
         String header = request.getHeader("Authorization");   // 取请求头
@@ -37,11 +48,17 @@ public class LoginInterceptor implements HandlerInterceptor {
         // 解析 token
         Long userId;
         String role;
+        Integer ver;
         try{
             Claims claims = jwtUtil.parseToken(token);
             userId = Long.valueOf(claims.getSubject());
             role = claims.get("role", String.class);
+            ver=claims.get("ver", Integer.class);
         } catch (JwtException e) {
+            throw new BizException(CodeEnum.NOT_LOGIN);
+        }
+        User user = userMapper.selectById(userId);
+        if(user ==null||ver==null||!ver.equals(user.getTokenVersion())){
             throw new BizException(CodeEnum.NOT_LOGIN);
         }
         //读标签校验角色

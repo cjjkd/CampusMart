@@ -3,11 +3,13 @@ package com.itcjj.campusmart.dto;
 
 import com.itcjj.campusmart.annotation.Phone;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class UserDTO {
+    @NotNull(message = "用户ID不能为空", groups = ValidGroup.Update.class)
     private Long id;
 
     @NotBlank(message="用户名不能为空", groups = {ValidGroup.Create.class})

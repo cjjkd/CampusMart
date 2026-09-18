@@ -15,6 +15,8 @@ public class User {
     private Long id;
     private String username;
     private String role;
+    private Integer tokenVersion;        // ← 新增
+
     @JsonIgnore
     private String password;
     private String nickname;

@@ -1,0 +1,629 @@
+{
+  "info": {
+    "name": "CampusMart · 用户模块自测",
+    "description": "Week01 Day6 回归测试集合。\n\n【使用前必读】\n1. 先启动 Spring Boot 服务（默认 http://localhost:8080）\n2. 按目录顺序从上往下跑，00 组会先登录并把 token 存进集合变量\n3. ADMIN 账号依赖：mtest0917 / 123456（需已存在且 role=ADMIN）\n4. 上传头像的 3 条用例需要手动选择文件，见该目录下的说明\n5. 「正常注册」用 {{$timestamp}} 生成用户名，可反复跑；其余注册用例用了固定名字，重跑时会返回 1001（用户名已存在）—— 这是正常的，恰好说明接口不幂等\n\n【环境变量】\nbaseUrl      http://localhost:8080\ntestUser     普通用户用户名（00 组注册）\nadminToken   管理员 token（00 组自动填充）\nuserToken    普通用户 token（00 组自动填充）\nmyUserId     普通用户 id（03 组自动填充）\nadminId      管理员 id（默认 11，如你的库不同请改）",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "testUser", "value": "apifox_user" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userToken", "value": "" },
+    { "key": "myUserId", "value": "1" },
+    { "key": "adminId", "value": "11" }
+  ],
+  "item": [
+    {
+      "name": "00 · 准备（先跑这一组）",
+      "item": [
+        {
+          "name": "0.1 登录管理员 → 存 adminToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.code === 0) { pm.collectionVariables.set('adminToken', j.data); }",
+                  "pm.test('登录成功 code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "if (j.code !== 0) { console.log('管理员登录失败，请确认 mtest0917 / 123456 存在且是 ADMIN'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"mtest0917\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        },
+        {
+          "name": "0.2 注册普通用户（首次 0 / 重跑 1001）",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{testUser}}\",\"password\":\"123456\",\"nickname\":\"接口测试号\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "0.3 登录普通用户 → 存 userToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.code === 0) { pm.collectionVariables.set('userToken', j.data); }",
+                  "pm.test('登录成功 code=0', function () { pm.expect(j.code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{testUser}}\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 · 注册 POST /user/register",
+      "item": [
+        {
+          "name": "1.1 正常注册 → 0",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"reg{{$timestamp}}\",\"password\":\"123456\",\"nickname\":\"新注册\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.2 用户名重复 → 1001",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1001', function () { pm.expect(j.code).to.eql(1001); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{testUser}}\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.3 用户名 2 字符（边界-1）→ 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"ab\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.4 用户名 21 字符（边界+1）→ 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"aaaaaaaaaaaaaaaaaaaaa\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.5 密码 5 字符（边界-1）→ 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"pw5test\",\"password\":\"12345\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.6 手机号格式错 → 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"phtest01\",\"password\":\"123456\",\"phone\":\"12345678901\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.7 昵称 21 字符 → 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"nktest01\",\"password\":\"123456\",\"nickname\":\"这是一条超过二十个字符的昵称用来测试长度校验是不是真的生效了\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.8 完全不传 username → 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "1.9 越权尝试：偷偷传 role=ADMIN → 应被忽略",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"roletry{{$timestamp}}\",\"password\":\"123456\",\"role\":\"ADMIN\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 · 登录 POST /user/login",
+      "item": [
+        {
+          "name": "2.1 密码错误 → 1003",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1003', function () { pm.expect(j.code).to.eql(1003); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{testUser}}\",\"password\":\"wrongpassword\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        },
+        {
+          "name": "2.2 用户不存在 → 1003（不能提示不存在，防账号枚举）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1003', function () { pm.expect(j.code).to.eql(1003); });", "console.log('提示语：' + j.msg + '（应该是「用户名或密码错误」，不能暴露账号是否存在）');"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"nobody_here_999\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        },
+        {
+          "name": "2.3 空用户名 → 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · 当前用户 GET /user/me",
+      "item": [
+        {
+          "name": "3.1 带 userToken → 0（并记录自己的 id）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "if (j.data && j.data.id) { pm.collectionVariables.set('myUserId', String(j.data.id)); }",
+                  "console.log('我的 id = ' + pm.collectionVariables.get('myUserId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+          }
+        },
+        {
+          "name": "3.2 不带 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+          }
+        },
+        {
+          "name": "3.3 假 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzM4NCJ9.fake.payload" }],
+            "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+          }
+        },
+        {
+          "name": "3.4 篡改 token 最后一个字符 → 401（签名校验）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}x" }],
+            "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 · 用户列表 GET /user/list（需 ADMIN）",
+      "item": [
+        {
+          "name": "4.1 ADMIN 访问 → 0",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });", "pm.test('返回是数组', function () { pm.expect(Array.isArray(j.data)).to.eql(true); });"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/user/list", "host": ["{{baseUrl}}"], "path": ["user", "list"] }
+          }
+        },
+        {
+          "name": "4.2 USER 访问 → 403（水平越权/垂直越权验证）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=403（不是 401！）', function () { pm.expect(j.code).to.eql(403); });", "console.log('403 = 已登录但权限不够；401 = 未登录。前端要分开处理');"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/user/list", "host": ["{{baseUrl}}"], "path": ["user", "list"] }
+          }
+        },
+        {
+          "name": "4.3 不带 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/user/list", "host": ["{{baseUrl}}"], "path": ["user", "list"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 · 添加用户 POST /user/add",
+      "item": [
+        {
+          "name": "5.1 带 adminToken 正常添加 → 0",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"username\":\"added{{$timestamp}}\",\"password\":\"123456\",\"nickname\":\"后台添加\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/add", "host": ["{{baseUrl}}"], "path": ["user", "add"] }
+          }
+        },
+        {
+          "name": "5.2 不带 token → 401（add 也受保护）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"bypass{{$timestamp}}\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/add", "host": ["{{baseUrl}}"], "path": ["user", "add"] }
+          }
+        },
+        {
+          "name": "5.3 带 token 但用户名重复 → 1001（add 与 register 共用 Service）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1001', function () { pm.expect(j.code).to.eql(1001); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{testUser}}\",\"password\":\"123456\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/add", "host": ["{{baseUrl}}"], "path": ["user", "add"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 · 更新用户 PUT /user/update",
+      "item": [
+        {
+          "name": "6.1 USER 改自己 → 0",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });", "console.log('改的是 myUserId=' + pm.collectionVariables.get('myUserId'));"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"id\":{{myUserId}},\"nickname\":\"我自己改的\",\"campus\":\"东校区\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/update", "host": ["{{baseUrl}}"], "path": ["user", "update"] }
+          }
+        },
+        {
+          "name": "6.2 USER 改别人 → 403（IDOR 修复验证）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=403', function () { pm.expect(j.code).to.eql(403); });", "console.log('修复前这里是 code=0 并且真的改掉了别人的昵称');"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"id\":{{adminId}},\"nickname\":\"我改别人\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/update", "host": ["{{baseUrl}}"], "path": ["user", "update"] }
+          }
+        },
+        {
+          "name": "6.3 ADMIN 改别人 → 0（管理员有权限）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"id\":{{myUserId}},\"nickname\":\"管理员改的\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/update", "host": ["{{baseUrl}}"], "path": ["user", "update"] }
+          }
+        },
+        {
+          "name": "6.4 不传 id → 400 用户ID不能为空",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"nickname\":\"没传id\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/update", "host": ["{{baseUrl}}"], "path": ["user", "update"] }
+          }
+        },
+        {
+          "name": "6.5 ⚠️ 改一个不存在的 id（ADMIN）→ 观察返回什么",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "console.log('实际返回 code=' + j.code + '，msg=' + j.msg);", "console.log('如果返回 0，说明「改了一个不存在的用户」被静默当成成功了 —— 这是待修的点');"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"id\":99999999,\"nickname\":\"幽灵用户\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/update", "host": ["{{baseUrl}}"], "path": ["user", "update"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 · 修改密码 PUT /user/password",
+      "item": [
+        {
+          "name": "7.1 原密码填错 → 1004",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1004', function () { pm.expect(j.code).to.eql(1004); });"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"oldPassword\":\"definitely_wrong\",\"newPassword\":\"whatever123\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/password", "host": ["{{baseUrl}}"], "path": ["user", "password"] }
+          }
+        },
+        {
+          "name": "7.2 新密码 5 字符 → 400",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=400', function () { pm.expect(j.code).to.eql(400); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"oldPassword\":\"123456\",\"newPassword\":\"12345\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/password", "host": ["{{baseUrl}}"], "path": ["user", "password"] }
+          }
+        },
+        {
+          "name": "7.3 不带 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"oldPassword\":\"123456\",\"newPassword\":\"whatever123\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/password", "host": ["{{baseUrl}}"], "path": ["user", "password"] }
+          }
+        },
+        {
+          "name": "⚠️ 7.4 [会踢自己下线] 真的改密码 → 0，之后 userToken 全部失效",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });", "if (j.code === 0) { console.log('改密成功！现在用 3.1 再请求一次，应该 401 —— 这就是 token_version 生效'); console.log('之后要重新跑 0.3 登录（新密码 654321）才能继续测'); }"] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"oldPassword\":\"123456\",\"newPassword\":\"654321\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/user/password", "host": ["{{baseUrl}}"], "path": ["user", "password"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 · 头像上传 POST /user/avatar",
+      "item": [
+        {
+          "name": "8.1 上传真实 PNG → 0（先手动选文件！）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=0', function () { pm.expect(j.code).to.eql(0); });", "if (j.code === 0) { console.log('文件地址 = ' + j.data); console.log('把它拼到 http://localhost:8080 后面，浏览器打开应该能看到图'); }"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        },
+        {
+          "name": "8.2 上传普通文本文件 → 1006",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1006', function () { pm.expect(j.code).to.eql(1006); });", "console.log('后端提示：' + j.msg);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        },
+        {
+          "name": "8.3 把 txt 改名成 .jpg 再传 → 1006（魔数校验）",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=1006', function () { pm.expect(j.code).to.eql(1006); });", "console.log('扩展名是假的，但魔数校验读文件头识破了');"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        },
+        {
+          "name": "8.4 完全不选文件 → 观察返回什么",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "console.log('实际返回 code=' + j.code + '，msg=' + j.msg);", "console.log('期望是 400 或 1005；如果是 500，说明全局异常处理器没接住这个情况');"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "formdata", "formdata": [] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        },
+        {
+          "name": "8.5 ⚠️ 上传超过 2MB 的文件 → 观察返回什么",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "console.log('实际返回 code=' + j.code + '，msg=' + j.msg);", "console.log('期望是 400 +「文件太大」；如果是 500「服务器开小差了」，说明 MaxUploadSizeExceededException 没被专门处理');"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        },
+        {
+          "name": "8.6 不带 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": { "raw": "{{baseUrl}}/user/avatar", "host": ["{{baseUrl}}"], "path": ["user", "avatar"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 · 删除用户 DELETE /user/delete/{id}（需 ADMIN）",
+      "item": [
+        {
+          "name": "9.1 USER 删除 → 403",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=403', function () { pm.expect(j.code).to.eql(403); });"] } }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/user/delete/99999999", "host": ["{{baseUrl}}"], "path": ["user", "delete", "99999999"] }
+          }
+        },
+        {
+          "name": "9.2 不带 token → 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "pm.test('期望 code=401', function () { pm.expect(j.code).to.eql(401); });"] } }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/user/delete/99999999", "host": ["{{baseUrl}}"], "path": ["user", "delete", "99999999"] }
+          }
+        },
+        {
+          "name": "9.3 ⚠️ ADMIN 删不存在的 id → 观察返回什么",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["var j = pm.response.json();", "console.log('实际返回 code=' + j.code + '，msg=' + j.msg);", "console.log('如果返回 0，说明「删了个不存在的人」被静默当成成功了');"] } }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/user/delete/99999999", "host": ["{{baseUrl}}"], "path": ["user", "delete", "99999999"] }
+          }
+        }
+      ]
+    }
+  ]
+}

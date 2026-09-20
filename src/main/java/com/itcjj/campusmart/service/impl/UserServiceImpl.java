@@ -79,6 +79,11 @@ public class UserServiceImpl implements UserService {
         user.setPhone(dto.getPhone());
         user.setCampus(dto.getCampus());
         userMapper.updateById(user);
+        int rows = userMapper.updateById(user);
+        if (rows == 0) {
+            throw new BizException(CodeEnum.USER_NOT_FOUND);
+        }
+
 
         // 改别人资料是敏感操作：记下「谁改的、改的是谁」
         log.info("用户资料更新 -> 操作人={}, 目标用户={}", currentId, dto.getId());
@@ -87,6 +92,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public void delete(Long id){
         userMapper.deleteById(id);
+        int rows = userMapper.deleteById(id);
+        if (rows == 0) {
+            throw new BizException(CodeEnum.USER_NOT_FOUND);
+        }
 
         // 删除是敏感操作：记下「谁删了谁」，出问题能追溯
         log.info("删除用户 -> 操作人={}, 目标用户={}", UserContext.get().getId(), id);

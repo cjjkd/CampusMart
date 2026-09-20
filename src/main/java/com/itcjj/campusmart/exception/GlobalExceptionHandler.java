@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
 @RestControllerAdvice
@@ -33,4 +34,11 @@ public class GlobalExceptionHandler {
         log.error("系统异常 [{}]", request.getRequestURI(), e);
         return Result.error(500, "服务器开小差了");
     }
+    // 上传文件超过大小限制：属于调用方的问题，返回 400 而不是 500
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<Void> handleUploadSize(MaxUploadSizeExceededException e, HttpServletRequest request) {
+        log.warn("上传文件过大 [{}]", request.getRequestURI());
+        return Result.error(400, "文件太大，单个文件不能超过 2MB");
+    }
+
 }

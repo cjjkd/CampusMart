@@ -78,7 +78,6 @@ public class UserServiceImpl implements UserService {
         user.setNickname(dto.getNickname());
         user.setPhone(dto.getPhone());
         user.setCampus(dto.getCampus());
-        userMapper.updateById(user);
         int rows = userMapper.updateById(user);
         if (rows == 0) {
             throw new BizException(CodeEnum.USER_NOT_FOUND);
@@ -91,7 +90,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void delete(Long id){
-        userMapper.deleteById(id);
         int rows = userMapper.deleteById(id);
         if (rows == 0) {
             throw new BizException(CodeEnum.USER_NOT_FOUND);

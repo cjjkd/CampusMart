@@ -1,9 +1,12 @@
 -- ============================================================
--- CampusMart · 用户表初始化脚本
+-- CampusMart · 数据库初始化脚本
 --
 -- 执行方式（二选一）：
---   A. MySQL Workbench：打开本文件 → 点工具栏的「闪电」图标执行
+--   A. MySQL Workbench / DataGrip：打开本文件 → 全选 → 执行
 --   B. 命令行：mysql -u root -p < init.sql
+--
+-- ⚠️ 本文件是「影子文件」：以后任何 ALTER TABLE 都要同步改这里，
+--    否则别人克隆项目后跑不起来。
 -- ============================================================
 
 -- ---------- 1. 建库 ----------
@@ -14,29 +17,82 @@ CREATE DATABASE IF NOT EXISTS campusmart
 
 USE campusmart;
 
--- ---------- 2. 建用户表 ----------
+-- ---------- 2. 用户表 ----------
 CREATE TABLE IF NOT EXISTS `user`
 (
-    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户ID',
-    `username`    VARCHAR(50)  NOT NULL COMMENT '用户名',
-    `password`    VARCHAR(100) NOT NULL COMMENT '密码（BCrypt 加密后的）',
-    `nickname`    VARCHAR(50)  DEFAULT NULL COMMENT '昵称',
-    `phone`       VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
-    `avatar`      VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
-    `campus`      VARCHAR(50)  DEFAULT NULL COMMENT '校区',
-    `status`      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1正常 0禁用',
-    `role`        VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '角色：USER普通用户 ADMIN管理员',
-    `token_version` INT        NOT NULL DEFAULT 0 COMMENT 'token 版本号：改密码时 +1，让旧 token 失效',
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+    `username`      VARCHAR(50)  NOT NULL COMMENT '用户名',
+    `password`      VARCHAR(100) NOT NULL COMMENT '密码（BCrypt 加密后的）',
+    `nickname`      VARCHAR(50)  DEFAULT NULL COMMENT '昵称',
+    `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
+    `avatar`        VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
+    `campus`        VARCHAR(50)  DEFAULT NULL COMMENT '校区',
+    `status`        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1正常 0禁用',
+    `role`          VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '角色：USER普通用户 ADMIN管理员',
+    `token_version` INT          NOT NULL DEFAULT 0 COMMENT 'token 版本号：改密码时 +1，让旧 token 失效',
 
-    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted`     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`       TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_username` (`username`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COMMENT = '用户表';
 
--- ---------- 3. 确认建好了 ----------
+-- ---------- 3. 商品分类表 ----------
+-- 分类是给管理员维护的「字典表」：数量少、改动少、被商品表引用
+CREATE TABLE IF NOT EXISTS `category`
+(
+    `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '分类ID',
+    `name`        VARCHAR(50) NOT NULL COMMENT '分类名称',
+    `sort`        INT         NOT NULL DEFAULT 0 COMMENT '排序号：数字越小越靠前',
+
+    `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`     TINYINT     NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_name` (`name`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COMMENT = '商品分类表';
+
+-- ---------- 4. 商品表 ----------
+CREATE TABLE IF NOT EXISTS `product`
+(
+    `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT '商品ID',
+    `title`           VARCHAR(100)  NOT NULL COMMENT '标题',
+    `description`     TEXT          DEFAULT NULL COMMENT '商品描述',
+    `price`           DECIMAL(10,2) NOT NULL COMMENT '价格（元）：金额绝不用 float/double',
+    `condition_level` TINYINT       NOT NULL DEFAULT 1 COMMENT '成色：1全新 2几乎全新 3轻微使用痕迹 4明显使用痕迹',
+    `category_id`     BIGINT        NOT NULL COMMENT '分类ID → category.id',
+    `seller_id`       BIGINT        NOT NULL COMMENT '卖家ID → user.id',
+    `status`          TINYINT       NOT NULL DEFAULT 1 COMMENT '状态：1在售 2已售出 0已下架',
+
+    `create_time`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`         TINYINT       NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (`id`),
+    -- 「你打算用它当查询条件，就给它建索引」：按卖家查「我的商品」、按分类筛选商品
+    KEY `idx_seller_id` (`seller_id`),
+    KEY `idx_category_id` (`category_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COMMENT = '商品表';
+
+-- ---------- 5. 分类初始数据 ----------
+-- INSERT IGNORE：靠 uk_name 去重，本脚本重复执行不会插出重复数据
+INSERT IGNORE INTO `category` (`name`, `sort`)
+VALUES ('数码电子', 1),
+       ('图书教材', 2),
+       ('生活用品', 3),
+       ('运动户外', 4),
+       ('服饰鞋包', 5),
+       ('其他', 99);
+
+-- ---------- 6. 确认建好了 ----------
 SHOW TABLES;
 DESC `user`;
+DESC `category`;
+DESC `product`;
+SELECT * FROM `category` ORDER BY `sort`;

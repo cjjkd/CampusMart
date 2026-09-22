@@ -15,6 +15,7 @@ public enum CodeEnum {
     FILE_EMPTY(1005, "上传文件不能为空"),
     FILE_TYPE_NOT_ALLOWED(1006, "只支持 jpg / jpeg / png / gif / webp 格式的图片"),
     FILE_UPLOAD_FAILED(1007, "文件上传失败"),
+    PRODUCT_NOT_FOUND(2001, "商品不存在"),
 
 
     NOT_LOGIN(401, "请先登录");

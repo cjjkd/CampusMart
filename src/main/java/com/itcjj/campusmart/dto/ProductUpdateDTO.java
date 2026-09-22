@@ -6,7 +6,9 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
-public class ProductDTO {
+public class ProductUpdateDTO {
+    @NotNull(message = "ID 不能为空")
+    private Long id;
     @NotBlank(message = "标题不能为空")
     @Size(max = 100, message = "标题长度不能超过 100 个字符")
     private String title;

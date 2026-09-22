@@ -1,0 +1,629 @@
+{
+  "info": {
+    "name": "CampusMart - 商品模块自测",
+    "description": "Week02 Day2 商品模块接口集合。\n\n使用顺序：先跑「00 准备」组（它会自动生成两个用户并登录，把 token 和商品 id 存进集合变量），再跑后面的组。\n\n核心考点：03.2 / 04.3 / 05.1 三条「越权」用例 —— 用 B 的 token 去改 A 的商品，必须返回 403。这三条是今天的重点。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "00 准备（先跑这一组）",
+      "item": [
+        {
+          "name": "00.1 注册卖家 A",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const u = 'proda' + Date.now();",
+                  "pm.collectionVariables.set('userA', u);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('注册成功 code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{userA}}\",\"password\":\"123456\",\"nickname\":\"卖家A\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "00.2 登录卖家 A（存 tokenA）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('登录成功 code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "if (j.code === 0) { pm.collectionVariables.set('tokenA', j.data); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{userA}}\",\"password\":\"123456\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        },
+        {
+          "name": "00.3 注册买家 B",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const u = 'prodb' + Date.now();",
+                  "pm.collectionVariables.set('userB', u);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('注册成功 code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{userB}}\",\"password\":\"123456\",\"nickname\":\"买家B\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/user/register", "host": ["{{baseUrl}}"], "path": ["user", "register"] }
+          }
+        },
+        {
+          "name": "00.4 登录买家 B（存 tokenB）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('登录成功 code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "if (j.code === 0) { pm.collectionVariables.set('tokenB', j.data); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{userB}}\",\"password\":\"123456\"}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 分类",
+      "item": [
+        {
+          "name": "01.1 分类列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "pm.test('至少返回 6 条分类', function () { pm.expect(j.data.length).to.be.at.least(6); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": { "raw": "{{baseUrl}}/category/list", "host": ["{{baseUrl}}"], "path": ["category", "list"] }
+          }
+        },
+        {
+          "name": "01.2 按分类筛选商品（categoryId=1）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/product/list?categoryId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["product", "list"],
+              "query": [{ "key": "categoryId", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "01.3 分类列表（无 token，预期 401）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=401', function () { pm.expect(pm.response.json().code).to.eql(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/category/list", "host": ["{{baseUrl}}"], "path": ["category", "list"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 发布商品",
+      "item": [
+        {
+          "name": "02.1 发布商品（卖家A，存 productId）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('code=0', function () { pm.expect(j.code).to.eql(0); });",
+                  "if (j.code === 0) { pm.collectionVariables.set('productId', j.data); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"二手 iPad Air 5\",\"description\":\"9成新，无划痕\",\"price\":2999.00,\"conditionLevel\":2,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/publish", "host": ["{{baseUrl}}"], "path": ["product", "publish"] }
+          }
+        },
+        {
+          "name": "02.2 发布：不传 title（预期 400）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=400', function () { pm.expect(pm.response.json().code).to.eql(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"price\":99.00,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/publish", "host": ["{{baseUrl}}"], "path": ["product", "publish"] }
+          }
+        },
+        {
+          "name": "02.3 发布：price = -5（预期 400）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=400', function () { pm.expect(pm.response.json().code).to.eql(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"测试负数\",\"price\":-5,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/publish", "host": ["{{baseUrl}}"], "path": ["product", "publish"] }
+          }
+        },
+        {
+          "name": "02.4 发布：不传 categoryId（预期 400）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=400', function () { pm.expect(pm.response.json().code).to.eql(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"没有分类\",\"price\":99.00,\"conditionLevel\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/publish", "host": ["{{baseUrl}}"], "path": ["product", "publish"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 编辑商品",
+      "item": [
+        {
+          "name": "03.1 卖家A 改自己的商品（预期成功）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\":{{productId}},\"title\":\"二手 iPad Air 5（已降价）\",\"description\":\"9成新\",\"price\":2499.00,\"conditionLevel\":2,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        },
+        {
+          "name": "★ 03.2 买家B 改卖家A 的商品（预期 403）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('越权被拒 code=403', function () { pm.expect(pm.response.json().code).to.eql(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenB}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\":{{productId}},\"title\":\"我改别人的商品\",\"price\":0.01,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        },
+        {
+          "name": "03.3 改一个不存在的商品（预期 2001）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=2001', function () { pm.expect(pm.response.json().code).to.eql(2001); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\":99999999,\"title\":\"不存在的商品\",\"price\":1.00,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        },
+        {
+          "name": "03.4 编辑：不传 id（预期 400）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=400', function () { pm.expect(pm.response.json().code).to.eql(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"忘了传 id\",\"price\":1.00,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        },
+        {
+          "name": "03.5 编辑：price = 0（预期 400）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=400', function () { pm.expect(pm.response.json().code).to.eql(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenA}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\":{{productId}},\"title\":\"零元购\",\"price\":0,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        },
+        {
+          "name": "03.6 编辑：无 token（预期 401）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=401', function () { pm.expect(pm.response.json().code).to.eql(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\":1,\"title\":\"没登录\",\"price\":1.00,\"conditionLevel\":1,\"categoryId\":1}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/product/update", "host": ["{{baseUrl}}"], "path": ["product", "update"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 下架商品",
+      "item": [
+        {
+          "name": "04.1 卖家A 下架自己的商品（预期成功）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": { "raw": "{{baseUrl}}/product/offline/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "offline", "{{productId}}"] }
+          }
+        },
+        {
+          "name": "⚠ 04.2 再下架一次（观察：返回 0 还是 2001？）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const c = pm.response.json().code;",
+                  "console.log('重复下架的返回 code = ' + c);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": { "raw": "{{baseUrl}}/product/offline/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "offline", "{{productId}}"] }
+          }
+        },
+        {
+          "name": "★ 04.3 买家B 下架卖家A 的商品（预期 403）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('越权被拒 code=403', function () { pm.expect(pm.response.json().code).to.eql(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenB}}" }],
+            "url": { "raw": "{{baseUrl}}/product/offline/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "offline", "{{productId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 删除商品",
+      "item": [
+        {
+          "name": "★ 05.1 买家B 删卖家A 的商品（预期 403）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('越权被拒 code=403', function () { pm.expect(pm.response.json().code).to.eql(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenB}}" }],
+            "url": { "raw": "{{baseUrl}}/product/delete/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "delete", "{{productId}}"] }
+          }
+        },
+        {
+          "name": "05.2 卖家A 删自己的商品（预期成功）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=0', function () { pm.expect(pm.response.json().code).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": { "raw": "{{baseUrl}}/product/delete/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "delete", "{{productId}}"] }
+          }
+        },
+        {
+          "name": "05.3 再删一次（预期 2001 商品不存在）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=2001', function () { pm.expect(pm.response.json().code).to.eql(2001); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+            "url": { "raw": "{{baseUrl}}/product/delete/{{productId}}", "host": ["{{baseUrl}}"], "path": ["product", "delete", "{{productId}}"] }
+          }
+        },
+        {
+          "name": "05.4 删除：无 token（预期 401）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('code=401', function () { pm.expect(pm.response.json().code).to.eql(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/product/delete/1", "host": ["{{baseUrl}}"], "path": ["product", "delete", "1"] }
+          }
+        }
+      ]
+    }
+  ]
+}

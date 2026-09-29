@@ -5,6 +5,7 @@ import com.itcjj.campusmart.dto.ProductDTO;
 import com.itcjj.campusmart.dto.ProductSearchDTO;
 import com.itcjj.campusmart.dto.ProductUpdateDTO;
 import com.itcjj.campusmart.entity.Product;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,5 +20,7 @@ public interface ProductService {
     List<Product> listByCategory(Long categoryId);
 
     Page<Product> search(ProductSearchDTO dto);
+
+    List<String> uploadImages(List<MultipartFile> files);
 }
 

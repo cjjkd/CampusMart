@@ -20,6 +20,7 @@ public class Product {
     private BigDecimal price;
     private Integer status;
     private Integer conditionLevel;
+    private String images;
     @TableField(fill = FieldFill.INSERT)
     //字段自动填
     private LocalDateTime createTime;

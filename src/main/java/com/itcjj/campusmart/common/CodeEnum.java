@@ -16,6 +16,8 @@ public enum CodeEnum {
     FILE_TYPE_NOT_ALLOWED(1006, "只支持 jpg / jpeg / png / gif / webp 格式的图片"),
     FILE_UPLOAD_FAILED(1007, "文件上传失败"),
     PRODUCT_NOT_FOUND(2001, "商品不存在"),
+    TOO_MANY_IMAGES(2002, "最多上传 9 张图片"),
+
 
 
     NOT_LOGIN(401, "请先登录");

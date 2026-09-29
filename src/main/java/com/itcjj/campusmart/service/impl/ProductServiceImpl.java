@@ -15,7 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+import com.itcjj.campusmart.service.FileStorageService;
 
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -24,6 +28,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductMapper productMapper;
+    @Autowired
+    private FileStorageService fileStorageService;
+
 
     @Override
     public Long publish(ProductDTO dto) {
@@ -34,6 +41,8 @@ public class ProductServiceImpl implements ProductService {
         product.setPrice(dto.getPrice());
         product.setConditionLevel(dto.getConditionLevel());
         product.setCategoryId(dto.getCategoryId());
+        product.setImages(dto.getImages());
+
 
         // 2. ★★★ 卖家从 token 取，不信前端 —— 今天整节课就为这一行
         product.setSellerId(UserContext.get().getId());
@@ -66,6 +75,8 @@ public class ProductServiceImpl implements ProductService {
         product.setPrice(dto.getPrice());
         product.setConditionLevel(dto.getConditionLevel());
         product.setCategoryId(dto.getCategoryId());
+        product.setImages(dto.getImages());
+
         int rows=productMapper.updateById(product);
         if (rows == 0) {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
@@ -141,6 +152,25 @@ public class ProductServiceImpl implements ProductService {
 
         return productMapper.selectPage(page, wrapper);
 
+    }
+    @Override
+    public List<String> uploadImages(List<MultipartFile> files) {
+        //1，空校验
+        if (files == null || files.isEmpty()) {
+            throw new BizException(CodeEnum.FILE_EMPTY);
+        }
+        //2，数量检验
+        if(files.size() > 9){
+            throw new BizException(CodeEnum.TOO_MANY_IMAGES);
+        }
+        //3，逐个存
+        List<String> urls= new ArrayList<>();
+        for(MultipartFile file:files){
+            urls.add(fileStorageService.save(file, "product"));
+        }
+        //4，日志
+        log.info("商品图片上传成功 -> 操作人={}, 文件数量={}", UserContext.get().getId(), files.size());
+        return urls;
     }
 
 

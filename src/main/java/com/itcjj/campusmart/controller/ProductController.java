@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.itcjj.campusmart.dto.ProductDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -49,5 +50,10 @@ public class ProductController {
     }
 
 
+    //上传图片
+    @PostMapping("/images")
+    public Result<List<String>>uploadImages(@RequestParam(value="files",required = false) List<MultipartFile> files){
+    return Result.success(productService.uploadImages(files));
+    }
 
 }

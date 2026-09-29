@@ -22,4 +22,5 @@ public class ProductUpdateDTO {
     private Integer conditionLevel;
     @NotNull(message = "分类 ID 不能为空")
     private Long categoryId;
+    private String images; // 图片列表，用逗号分隔
 }

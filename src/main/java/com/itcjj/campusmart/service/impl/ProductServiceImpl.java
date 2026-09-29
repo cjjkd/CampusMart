@@ -1,8 +1,10 @@
 package com.itcjj.campusmart.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.dto.ProductDTO;
+import com.itcjj.campusmart.dto.ProductSearchDTO;
 import com.itcjj.campusmart.dto.ProductUpdateDTO;
 import com.itcjj.campusmart.entity.Product;
 import com.itcjj.campusmart.exception.BizException;
@@ -12,6 +14,7 @@ import com.itcjj.campusmart.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -111,6 +114,35 @@ public class ProductServiceImpl implements ProductService {
                         .eq(Product::getStatus, 1)
                         .orderByDesc(Product::getCreateTime));
     }
+    @Override
+    public Page<Product> search(ProductSearchDTO dto) {
+        Page<Product> page = new Page<>(dto.getPageNum(), dto.getPageSize());
+
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
+                .eq(Product::getStatus, 1)                    // 只查在售
+                .eq(dto.getCategoryId() != null, Product::getCategoryId, dto.getCategoryId())
+                .ge(dto.getMinPrice() != null, Product::getPrice, dto.getMinPrice())
+                .le(dto.getMaxPrice() != null, Product::getPrice, dto.getMaxPrice())
+                .eq(dto.getConditionLevel() != null, Product::getConditionLevel, dto.getConditionLevel())
+                // ... 其他条件，每个前面挂一个 boolean 开关
+                .and(StringUtils.hasText(dto.getKeyword()), w -> w     // ← 关键字，别忘了括号
+                        .like(Product::getTitle, dto.getKeyword())
+                        .or()
+                        .like(Product::getDescription, dto.getKeyword()));
+
+// 排序（白名单）
+        if ("price_asc".equals(dto.getSortBy())) {
+            wrapper.orderByAsc(Product::getPrice);
+        } else if ("price_desc".equals(dto.getSortBy())) {
+            wrapper.orderByDesc(Product::getPrice);
+        } else {
+            wrapper.orderByDesc(Product::getCreateTime);     // 默认：最新在前
+        }
+
+        return productMapper.selectPage(page, wrapper);
+
+    }
+
 
 
 }

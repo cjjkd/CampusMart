@@ -1,6 +1,8 @@
 package com.itcjj.campusmart.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.itcjj.campusmart.common.Result;
+import com.itcjj.campusmart.dto.ProductSearchDTO;
 import com.itcjj.campusmart.dto.ProductUpdateDTO;
 import com.itcjj.campusmart.entity.Product;
 import com.itcjj.campusmart.service.ProductService;
@@ -40,6 +42,10 @@ public class ProductController {
     @GetMapping("/list")
     public Result<List<Product>> list(@RequestParam Long categoryId) {
         return Result.success(productService.listByCategory(categoryId));
+    }
+    @GetMapping("/search")
+    public Result<Page<Product>> search(ProductSearchDTO dto) {
+        return Result.success(productService.search(dto));
     }
 
 

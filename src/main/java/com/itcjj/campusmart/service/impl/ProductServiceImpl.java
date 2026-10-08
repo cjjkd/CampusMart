@@ -34,6 +34,20 @@ public class ProductServiceImpl implements ProductService {
     private ProductMapper productMapper;
     @Autowired
     private FileStorageService fileStorageService;
+    @Autowired
+    private StringRedisTemplate redisTemplate;   // 操作 Redis 的工具
+    @Autowired
+    private ObjectMapper objectMapper;           // 对象 ⇄ JSON 的转换器
+
+    // ========== 缓存相关的常量：避免"魔法数字"散落在方法里 ==========
+    /** key 前缀 —— 冒号分层是 Redis 惯例，以后 KEYS product:detail:* 能批量看 */
+    private static final String DETAIL_KEY_PREFIX = "product:detail:";
+    /** 真数据的缓存时长 */
+    private static final Duration DETAIL_TTL = Duration.ofMinutes(30);
+    /** 空值标记的缓存时长 —— 必须短，因为 id 可能很快被创建出来 */
+    private static final Duration NULL_TTL = Duration.ofMinutes(1);
+    /** 空值标记本身：Redis 存不了 null，用空串代表"这个 id 确实不存在" */
+    private static final String NULL_MARK = "";
 
 
     @Override
@@ -85,6 +99,8 @@ public class ProductServiceImpl implements ProductService {
         if (rows == 0) {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
+        //删除缓存
+        redisTemplate.delete(DETAIL_KEY_PREFIX + dto.getId());
         log.info("商品更新成功 -> 操作人={}, productId={}", UserContext.get().getId(), product.getId());
 
     }
@@ -104,6 +120,8 @@ public class ProductServiceImpl implements ProductService {
         if (rows == 0) {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
+        //删除缓存
+        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
         log.info("商品下架成功 -> 操作人={}, productId={}", UserContext.get().getId(), product.getId());
     }
     @Override
@@ -119,6 +137,8 @@ public class ProductServiceImpl implements ProductService {
         if (rows == 0) {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
+        //删除缓存
+        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
         log.info("商品删除成功 -> 操作人={}, productId={}", UserContext.get().getId(), id);
     }
     @Override// ProductServiceImpl
@@ -177,20 +197,6 @@ public class ProductServiceImpl implements ProductService {
         return urls;
     }
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;   // 操作 Redis 的工具
-    @Autowired
-    private ObjectMapper objectMapper;           // 对象 ⇄ JSON 的转换器
-
-    // ========== 缓存相关的常量：避免"魔法数字"散落在方法里 ==========
-    /** key 前缀 —— 冒号分层是 Redis 惯例，以后 KEYS product:detail:* 能批量看 */
-    private static final String DETAIL_KEY_PREFIX = "product:detail:";
-    /** 真数据的缓存时长 */
-    private static final Duration DETAIL_TTL = Duration.ofMinutes(30);
-    /** 空值标记的缓存时长 —— 必须短，因为 id 可能很快被创建出来 */
-    private static final Duration NULL_TTL = Duration.ofMinutes(1);
-    /** 空值标记本身：Redis 存不了 null，用空串代表"这个 id 确实不存在" */
-    private static final String NULL_MARK = "";
 
     @Override
     public Product getDetail(Long id) {

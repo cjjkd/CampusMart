@@ -22,5 +22,7 @@ public interface ProductService {
     Page<Product> search(ProductSearchDTO dto);
 
     List<String> uploadImages(List<MultipartFile> files);
+
+    Product getDetail(Long id);
 }
 

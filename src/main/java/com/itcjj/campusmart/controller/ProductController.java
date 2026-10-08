@@ -56,4 +56,11 @@ public class ProductController {
     return Result.success(productService.uploadImages(files));
     }
 
+    // 商品详情（带 Redis 缓存）
+    @GetMapping("/{id}")
+    public Result<Product> detail(@PathVariable Long id) {
+        return Result.success(productService.getDetail(id));
+    }
+
+
 }

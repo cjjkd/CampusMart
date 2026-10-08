@@ -13,14 +13,18 @@ import com.itcjj.campusmart.service.ProductService;
 import com.itcjj.campusmart.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import com.itcjj.campusmart.service.FileStorageService;
+import tools.jackson.databind.ObjectMapper;
 
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -171,6 +175,62 @@ public class ProductServiceImpl implements ProductService {
         //4，日志
         log.info("商品图片上传成功 -> 操作人={}, 文件数量={}", UserContext.get().getId(), files.size());
         return urls;
+    }
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;   // 操作 Redis 的工具
+    @Autowired
+    private ObjectMapper objectMapper;           // 对象 ⇄ JSON 的转换器
+
+    // ========== 缓存相关的常量：避免"魔法数字"散落在方法里 ==========
+    /** key 前缀 —— 冒号分层是 Redis 惯例，以后 KEYS product:detail:* 能批量看 */
+    private static final String DETAIL_KEY_PREFIX = "product:detail:";
+    /** 真数据的缓存时长 */
+    private static final Duration DETAIL_TTL = Duration.ofMinutes(30);
+    /** 空值标记的缓存时长 —— 必须短，因为 id 可能很快被创建出来 */
+    private static final Duration NULL_TTL = Duration.ofMinutes(1);
+    /** 空值标记本身：Redis 存不了 null，用空串代表"这个 id 确实不存在" */
+    private static final String NULL_MARK = "";
+
+    @Override
+    public Product getDetail(Long id) {
+        // 拼出这个商品的缓存 key，例如 "product:detail:7"
+        String cacheKey = DETAIL_KEY_PREFIX + id;
+
+        // ---------- 第 1 步：先问 Redis，看有没有缓存 ----------
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+
+        // 情况 A：拿到一段非空字符串 —— 是之前缓存下来的真数据（JSON）
+        //         hasText = "不是 null，且去掉空白后还有内容"
+        if (StringUtils.hasText(cached)) {
+            log.info("商品详情命中缓存 -> productId={}", id);
+            // JSON 字符串 → Product 对象。注意用 readValue，不是 convertValue
+            return objectMapper.readValue(cached, Product.class);
+        }
+
+        // 情况 B：拿到了空串 —— 这是上次留下的"空值标记"，说明库里确实没有
+        //         （能走到这里，cached 只可能是 ""，因为上面已经把 null 排除了）
+        if (cached != null) {
+            log.warn("商品详情被空值标记拦下，不查库 -> productId={}", id);
+            throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
+        }
+
+        // 情况 C：cached == null —— 从来没缓存过，第一次来 → 回源查数据库
+        log.info("商品详情缓存未命中，回源查库 -> productId={}", id);
+        Product product = productMapper.selectById(id);
+
+        // ---------- 第 2 步：库里查到了 → 写缓存，再返回 ----------
+        if (product != null) {
+            redisTemplate.opsForValue().set(
+                    cacheKey,
+                    objectMapper.writeValueAsString(product),   // Product → JSON 字符串
+                    DETAIL_TTL);                                 // 30 分钟过期
+            return product;
+        }
+
+        // ---------- 第 3 步：库里也没有 → 写"空值标记"，防穿透 ----------
+        redisTemplate.opsForValue().set(cacheKey, NULL_MARK, NULL_TTL);  // 空串，只存 1 分钟
+        throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
     }
 
 

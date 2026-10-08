@@ -12,7 +12,7 @@
 
 ## 快速开始
 
-**前置**：JDK 17+ ｜ Maven 3.9+ ｜ MySQL 8.x（本地 3306）
+**前置**：JDK 17+ ｜ Maven 3.9+ ｜ MySQL 8.x（本地 3306）｜ **Redis（本地 6379）**
 
 ### 1. 建库建表
 
@@ -20,7 +20,22 @@
 mysql -u root -p < sql/init.sql
 ```
 
-### 2. 生成配置文件
+### 2. 启动 Redis
+
+商品详情接口用 Redis 做缓存，**启动项目前必须先把它跑起来**，否则 `GET /product/{id}` 会报连接错误。
+
+```bash
+redis-server                       # Mac / Linux
+# Windows：双击 redis-server.exe，并保持那个黑窗口开着（关掉 = 服务停了）
+```
+
+验证：
+
+```bash
+redis-cli ping                     # 返回 PONG 就对了
+```
+
+### 3. 生成配置文件
 
 ```bash
 # Windows
@@ -40,7 +55,7 @@ cp src/main/resources/application.yml.example src/main/resources/application.yml
 > ⚠️ `application.yml` 含数据库密码，已被 `.gitignore` 排除，**不会进入仓库**。
 > 因此改了 `application.yml` 一定要同步更新 `application.yml.example`，否则别人克隆后跑不起来。
 
-### 3. 启动
+### 4. 启动
 
 ```bash
 mvn spring-boot:run
@@ -48,7 +63,7 @@ mvn spring-boot:run
 
 （IDEA 里直接运行 `CampusMartApplication` 也可以）
 
-### 4. 验证
+### 5. 验证
 
 浏览器打开 **`http://localhost:8080/index.html`** —— 内置的**用户模块接口测试台**（与后端同源部署，无需额外配置）。
 
@@ -68,7 +83,7 @@ mvn spring-boot:run
 | 认证 | JWT（jjwt） | 0.12.6 ✅ 已实现 |
 | 密码加密 | Spring Security Crypto（BCrypt） | 已实现 |
 | 参数校验 | spring-boot-starter-validation | 已实现 |
-| 缓存 | Redis | 7.x（后续阶段） |
+| 缓存 | Redis（`StringRedisTemplate`） | ✅ 已实现（本地 5.0.14） |
 | 构建 | Maven | 3.9+ |
 | 接口文档 | Knife4j / SpringDoc | 后续引入 |
 
@@ -92,10 +107,11 @@ com.itcjj.campusmart
 - 实体类不直接出入接口，入参用 dto、出参用 vo
 - 统一响应体：`{ "code": 0, "msg": "success", "data": {...} }`
 
-> ⚠️ **当前状态与差距**：入参已全部使用 dto；**出参仍有部分直接返回 `User` 实体**
-> （`/user/me`、`/user/list`）。密码已用 `@JsonIgnore` 挡住，但 `deleted`、`tokenVersion`
+> ⚠️ **当前状态与差距**：入参已全部使用 dto；**出参仍全部直接返回实体**
+> （`/user/me`、`/user/list` 返回 `User`；`/product/*` 返回 `Product`）。
+> 密码已用 `@JsonIgnore` 挡住，但 `deleted`、`tokenVersion`、`sellerId`
 > 这类内部字段仍会暴露给前端。
-> **待办**：补 `vo` 层，把这两个接口改为返回 VO。
+> **待办**：补 `vo` 层，把这些接口改为返回 VO。
 
 ## 数据库设计
 
@@ -116,9 +132,11 @@ erDiagram
 
 > - 完整字段定义（字段、类型、注释、索引规划）见 [`docs/er-diagram.md`](docs/er-diagram.md)
 > - 注：`order` 是 MySQL 保留字，物理表名用 `orders`
-> - 已完成建表：`user`（见 [`sql/init.sql`](sql/init.sql)）
+> - 已完成建表：`user` / `category` / `product`（见 [`sql/init.sql`](sql/init.sql)）
 
 ## 已实现接口
+
+### 用户模块
 
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
@@ -132,6 +150,48 @@ erDiagram
 | POST | `/user/add` | 新增用户 | 需登录 |
 | PUT | `/user/update` | 修改用户资料（只更新传入字段） | 本人或 ADMIN |
 | DELETE | `/user/delete/{id}` | 删除用户（逻辑删除） | 需 ADMIN |
+
+### 分类模块
+
+| 方法 | 路径 | 说明 | 权限 |
+|---|---|---|---|
+| GET | `/category/list` | 查询全部分类 | 需登录 |
+
+### 商品模块
+
+| 方法 | 路径 | 说明 | 权限 |
+|---|---|---|---|
+| POST | `/product/publish` | 发布商品（**卖家从 token 取，不信前端**） | 需登录 |
+| PUT | `/product/update` | 编辑商品（**校验归属权**） | 仅卖家 |
+| PUT | `/product/offline/{id}` | 下架商品（**校验归属权**） | 仅卖家 |
+| DELETE | `/product/delete/{id}` | 删除商品（逻辑删除，**校验归属权**） | 仅卖家 |
+| GET | `/product/list?categoryId=` | 按分类查在售商品 | 需登录 |
+| GET | `/product/search` | 关键字 + 价格区间 + 成色 + 排序 + 分页 | 需登录 |
+| GET | `/product/{id}` | **商品详情（Redis 缓存 + 空值防穿透）** | 需登录 |
+| POST | `/product/images` | 商品多图上传（最多 9 张） | 需登录 |
+
+> ⚠️ **商品接口的越权防护**：`update` / `offline` / `delete` 三个接口
+> 都会先查出商品的 `sellerId`，与当前登录用户比对，不一致直接返回 `403`。
+> （实测：用 A 账号改 B 账号发布的商品 → `403 无权限访问`）
+
+### 商品详情缓存设计
+
+```
+GET /product/{id}
+  ↓ ① get("product:detail:{id}")
+    ├─ 有值    → 反序列化直接返回（不碰数据库）
+    ├─ 空串 "" → 上次查过确实没有 → 直接返回 2001（防穿透）
+    └─ null    → 没缓存过，继续 ↓
+  ↓ ② selectById(id)
+    ├─ 查到 → 写回 Redis（TTL 30min）→ 返回
+    └─ 没有 → 写空值标记 ""（TTL 1min）→ 返回 2001
+```
+
+- **两档 TTL**：真数据 30 分钟；空值标记只 1 分钟（id 可能马上被创建出来，不能长期误判）
+- **Redis 存不了 `null`**，用空串 `""` 代表「这个 id 确实不存在」
+- **Cache Aside**：改 / 下架 / 删商品时 `redisTemplate.delete` 清缓存，
+  顺序是**先更新数据库，再删缓存**（反了会被读请求用旧值回填）
+- **压测实测**：4000 次并发请求，缓存命中率 **99.88%**，MySQL 实际只被查询 **5 次**
 
 统一响应格式：`{"code": 0, "msg": "ok", "data": ...}`，`code = 0` 表示成功。
 
@@ -180,6 +240,8 @@ erDiagram
 | `1005` | 上传文件不能为空 | 上传头像时没带文件 |
 | `1006` | 只支持 jpg / jpeg / png / gif / webp 格式 | 扩展名白名单或文件头魔数校验不通过 |
 | `1007` | 文件上传失败 | 落盘 IO 异常 |
+| `2001` | 商品不存在 | 查询 / 编辑 / 下架 / 删除一个不存在的商品；**也用作缓存空值防穿透的落点** |
+| `2002` | 最多上传 9 张图片 | 商品多图上传超过数量上限 |
 
 > 业务异常与未预料的异常（空指针、数据库断开等）一律由
 > [`GlobalExceptionHandler`](src/main/java/com/itcjj/campusmart/exception/GlobalExceptionHandler.java)
@@ -236,7 +298,30 @@ erDiagram
     - [x] **43 条接口自测集合**（见 [`http/campusmart-user-test.postman_collection.json`](http/campusmart-user-test.postman_collection.json)，Apifox / Postman 可直接导入）
     - [x] 自测发现并修复 4 个问题：两处静默失败、上传超限返回 500、修复引入的重复调用
     - [x] README 与接口清单同步更新
-- [ ] Week 02 · 待补充
+- [x] **Week 02 · 商品模块**（9.21 ~ 10.08）✅
+  - 目标：商品全链路可用 + 引入 Redis 解决详情页性能问题
+  - [x] **Day 1 · 商品表设计 + 发布接口**（9.21）
+    - [x] `category` / `product` 表 + 分类初始数据
+    - [x] 发布商品：**卖家从 token 取，不信前端**；发布即在售，不让用户决定状态
+  - [x] **Day 2 · 编辑 / 下架 + 分类列表**（9.22）
+    - [x] 编辑 / 下架 / 删除三个接口，**每个都校验归属权（IDOR 防护）**
+    - [x] `GET /category/list` 分类列表
+  - [x] **Day 3 · 关键字搜索 + 多条件筛选 + 分页**（9.23 ~ 9.29）
+    - [x] `LambdaQueryWrapper` 条件构造器，每个条件挂一个 boolean 开关
+    - [x] 分页插件（补引 `mybatis-plus-jsqlparser`）+ 排序白名单
+    - [x] `GET /product/search`：标题/描述模糊匹配 + 价格区间 + 成色 + 排序 + 分页
+  - [x] **Day 4 · 多图上传（本地存储）**（9.29）
+    - [x] 抽出 `FileStorageService`，头像与商品图共用存储逻辑
+    - [x] `POST /product/images` 最多 9 张；非法类型 / 超限被拒
+  - [x] **Day 5 · 商品详情 + Redis 缓存防穿透**（10.08）
+    - [x] 接入 `StringRedisTemplate`；**Boot 3+ 配置前缀是 `spring.data.redis`**
+    - [x] `GET /product/{id}`：查缓存 → 未命中回源 → 回填（TTL 30min）
+    - [x] **缓存空值防穿透**：不存在的 id 记 `""`（TTL 1min），不会反复打数据库
+  - [x] **Day 6 · 缓存一致性 + 压测验证**（10.08）
+    - [x] Cache Aside：**先更新库，再删缓存**；改 / 下架 / 删三处都清缓存
+    - [x] 并发压测 4000 次：**命中率 99.88%，MySQL 实际只被查询 5 次**
+    - [x] 结论：该量级下响应时间看不出缓存价值（主键查询太便宜），
+      缓存真正买到的是**数据库压力**，不是单次速度
 
 ### Phase 2 · 业务开发
 

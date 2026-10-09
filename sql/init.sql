@@ -98,3 +98,43 @@ DESC `user`;
 DESC `category`;
 DESC `product`;
 SELECT * FROM `category` ORDER BY `sort`;
+
+USE campusmart;
+
+-- 订单表：一单一件商品
+-- 校园二手每件都是孤品（一单一品），所以**不需要**单独的订单明细表 ——
+-- 把商品快照直接内联在订单上：少一张表、少一次 join。
+CREATE TABLE IF NOT EXISTS `orders`
+(
+    `id`             BIGINT        NOT NULL AUTO_INCREMENT COMMENT '订单ID',
+    `order_no`       VARCHAR(32)   NOT NULL COMMENT '订单号（给用户看的），唯一',
+    `buyer_id`       BIGINT        NOT NULL COMMENT '买家ID → user.id',
+    `seller_id`      BIGINT        NOT NULL COMMENT '下单时的卖家ID → user.id',
+    `product_id`     BIGINT        NOT NULL COMMENT '商品ID → product.id',
+
+    -- ↓↓↓ 下单时的商品快照：订单是凭证，商品之后改价/改名/删图都不影响历史订单
+    `product_title`  VARCHAR(100)  NOT NULL COMMENT '下单时的商品标题（快照）',
+    `product_images` VARCHAR(1000) DEFAULT NULL COMMENT '下单时的商品图片（快照）',
+
+    `amount`         DECIMAL(10,2) NOT NULL COMMENT '订单金额 = 下单时的商品价格（快照）',
+    `status`         TINYINT       NOT NULL DEFAULT 0
+        COMMENT '0待付款 1已付款 2已发货 3已完成 4已取消',
+
+    `create_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`        TINYINT       NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_order_no` (`order_no`),
+    -- 「我买到的」按 buyer_id 查；「我卖出的」按 seller_id 查
+    KEY `idx_buyer_id` (`buyer_id`),
+    KEY `idx_seller_id` (`seller_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+    COMMENT = '订单表（一单一品，商品快照内联）';
+
+
+-- 检查建表结果
+SHOW TABLES;
+DESC `orders`;

@@ -48,6 +48,7 @@ erDiagram
         tinyint  condition_level    "成色 1全新 2几乎全新 3轻微使用 4明显使用"
         varchar  images             "图片URL，逗号分隔，最多9张"
         tinyint  status             "状态 1在售 2已售出 0已下架"
+        int      version            "乐观锁版本号（并发下单防超卖）"
         datetime create_time        "创建时间"
         datetime update_time        "更新时间"
         tinyint  deleted            "逻辑删除 0未删 1已删"

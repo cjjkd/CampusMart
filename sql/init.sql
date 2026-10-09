@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS `product`
     `update_time`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         TINYINT       NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
     `images`          VARCHAR(1000) COMMENT '图片URL，逗号分隔，最多9张',
+    `version`         INT           NOT NULL DEFAULT 0 COMMENT '乐观锁版本号：下单时防止超卖',
 
 PRIMARY KEY (`id`),
     -- 「你打算用它当查询条件，就给它建索引」：按卖家查「我的商品」、按分类筛选商品

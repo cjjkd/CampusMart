@@ -7,12 +7,14 @@ import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
 
+
 @Data
 @TableName("product")
 public class Product {
     @TableId(type = IdType.AUTO)   // ← User 有这行
     private Long id;
-
+    @Version
+    private Integer version;
     private Long sellerId;
     private Long categoryId;
     private String title;

@@ -17,6 +17,8 @@ public enum CodeEnum {
     FILE_UPLOAD_FAILED(1007, "文件上传失败"),
     PRODUCT_NOT_FOUND(2001, "商品不存在"),
     TOO_MANY_IMAGES(2002, "最多上传 9 张图片"),
+    PRODUCT_STATUS_ERROR(2003, "商品已售出或已下架"),
+    CANNOT_BUY_OWN_PRODUCT(2004, "不能购买自己的商品"),
 
 
 

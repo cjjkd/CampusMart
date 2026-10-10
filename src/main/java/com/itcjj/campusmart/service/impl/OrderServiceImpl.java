@@ -1,5 +1,6 @@
 package com.itcjj.campusmart.service.impl;
 import com.itcjj.campusmart.enums.OrderStatus;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.dto.OrderCreateDTO;
@@ -14,23 +15,56 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
+import java.util.UUID;
 
 @Slf4j
 @Service
 
 
 public class OrderServiceImpl implements OrderService {
+
     @Autowired
     private OrderMapper orderMapper;
     @Autowired
     private ProductMapper productMapper;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    // ========== 幂等 Token 相关常量 ==========
+    /** key 前缀 —— 发牌和撕票都用它，保证两边拼出来的 key 一定一致 */
+    private static final String TOKEN_PREFIX = "order:token:";
+    /** 凭证有效期：太短用户还没点完就过期，太长会积一堆废 key */
+    private static final Duration TOKEN_TTL = Duration.ofMinutes(5);
+    /** 存进 Redis 的占位值 —— StringRedisTemplate 存不了 null，我们只关心 key 在不在 */
+    private static final String TOKEN_VALUE = "1";
+
+    @Override
+    public String generateToken() {
+        // 生成长度 32 的随机串（去掉 UUID 里的横线），别人猜不到
+        String token = UUID.randomUUID().toString().replace("-", "");
+        // 存 Redis，5 分钟后自动消失
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + token, TOKEN_VALUE, TOKEN_TTL);
+        log.info("已签发下单凭证 -> token={}", token);
+        return token;
+    }
 
     @Override
     @Transactional
     public Long createOrder(OrderCreateDTO orderCreateDTO) {
+        // ---------- 第 0 步：撕票（幂等校验，必须放最前面） ----------
+        // delete 是「检查 + 删除」一步完成的原子操作：
+        //   返回 true  → 票还在，我是第一个用它的人 → 放行
+        //   返回 false → 票早被撕过了（重复提交）→ 拒绝
+        Boolean ok = redisTemplate.delete(TOKEN_PREFIX + orderCreateDTO.getToken());
+        if (ok == null || !ok) {
+            log.warn("下单凭证无效或已被使用 -> token={}", orderCreateDTO.getToken());
+            throw new BizException(CodeEnum.DUPLICATE_SUBMIT);
+        }
+
         //        ① 查商品  selectById(productId)
         //     ├─ null          → 报错「商品不存在」（2001）
         //     └─ status != 1   → 报错「商品已售出或已下架」
@@ -58,6 +92,7 @@ public class OrderServiceImpl implements OrderService {
             log.warn("商品 {} 扣减状态失败", productId);
             throw new BizException(CodeEnum.PRODUCT_STATUS_ERROR);
         }
+
         //        ④ 生成订单，insert 一条 orders
         //     ├─ order_no       ← 订单号（要唯一，见下方）
         //     ├─ buyer_id       ← 当前登录用户

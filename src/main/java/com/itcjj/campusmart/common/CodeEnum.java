@@ -19,6 +19,7 @@ public enum CodeEnum {
     TOO_MANY_IMAGES(2002, "最多上传 9 张图片"),
     PRODUCT_STATUS_ERROR(2003, "商品已售出或已下架"),
     CANNOT_BUY_OWN_PRODUCT(2004, "不能购买自己的商品"),
+    DUPLICATE_SUBMIT(2005,"请勿重复提交"),
 
 
 

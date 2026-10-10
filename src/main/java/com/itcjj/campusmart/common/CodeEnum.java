@@ -20,6 +20,8 @@ public enum CodeEnum {
     PRODUCT_STATUS_ERROR(2003, "商品已售出或已下架"),
     CANNOT_BUY_OWN_PRODUCT(2004, "不能购买自己的商品"),
     DUPLICATE_SUBMIT(2005,"请勿重复提交"),
+    ORDER_NOT_FOUND(2006, "订单不存在"),
+    ORDER_STATUS_ERROR(2007, "当前订单状态不允许该操作"),
 
 
 

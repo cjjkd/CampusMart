@@ -26,4 +26,24 @@ public class OrderController {
     public Result<String> getToken() {
         return Result.success(orderService.generateToken());
     }
+    @PutMapping("/pay/{orderId}")
+    public Result<String> pay(@PathVariable Long orderId) {
+        orderService.pay(orderId);
+        return Result.success("支付成功");
+    }
+    @PutMapping("/ship/{orderId}")
+    public Result<String> ship(@PathVariable Long orderId) {
+        orderService.ship(orderId);
+        return Result.success("发货成功");
+    }
+    @PutMapping("/confirm/{orderId}")
+    public Result<String> confirm(@PathVariable Long orderId) {
+        orderService.confirm(orderId);
+        return Result.success("确认收货成功");
+    }
+    @PutMapping("/cancel/{orderId}")
+    public Result<String> cancel(@PathVariable Long orderId) {
+        orderService.cancel(orderId);
+        return Result.success("取消订单成功");
+    }
 }

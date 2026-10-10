@@ -1,4 +1,5 @@
 package com.itcjj.campusmart.service.impl;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.itcjj.campusmart.enums.OrderStatus;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,5 +117,127 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.insert(order);
         log.info("订单创建成功，买家{}，卖家{}，订单号：{}", order.getBuyerId(), order.getSellerId(), order.getOrderNo());
         return order.getId();                           // insert 后 MP 会把自增 id 回填进来
+    }
+
+    @Override
+    public void pay(Long orderId) {
+        // ① 查订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(CodeEnum.ORDER_NOT_FOUND);
+        }
+        // ② 校验身份：只有买家能支付
+        if (!order.getBuyerId().equals(UserContext.get().getId())) {
+            throw new BizException(CodeEnum.NO_PERMISSION);
+        }
+        // ③ 校验起点状态
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode()) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        // ④ 改状态
+        int rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, orderId)
+                .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())   // ← 状态再写一遍
+                .set(Order::getStatus, OrderStatus.PAID.getCode()));
+        if (rows == 0) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        log.info("订单支付成功 -> orderId={}, buyerId={}", orderId, order.getBuyerId());
+    }
+
+    @Override
+    public void ship(Long orderId) {
+        // ① 查订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(CodeEnum.ORDER_NOT_FOUND);
+        }
+        // ② 校验身份：只有卖家能发货
+        if (!order.getSellerId().equals(UserContext.get().getId())) {
+            throw new BizException(CodeEnum.NO_PERMISSION);
+        }
+        // ③ 校验起点状态
+        if (order.getStatus() != OrderStatus.PAID.getCode()) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        // ④ 改状态
+        int rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, orderId)
+                .eq(Order::getStatus, OrderStatus.PAID.getCode())   // ← 状态再写一遍
+                .set(Order::getStatus, OrderStatus.SHIPPED.getCode()));
+        if (rows == 0) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        log.info("订单发货成功 -> orderId={}, sellerId={}", orderId, order.getSellerId());
+    }
+
+    @Override
+    public void confirm(Long orderId) {
+        // ① 查订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(CodeEnum.ORDER_NOT_FOUND);
+        }
+        // ② 校验身份：只有买家能确认收货
+        if (!order.getBuyerId().equals(UserContext.get().getId())) {
+            throw new BizException(CodeEnum.NO_PERMISSION);
+        }
+        // ③ 校验起点状态
+        if (order.getStatus() != OrderStatus.SHIPPED.getCode()) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        // ④ 改状态
+        int rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, orderId)
+                .eq(Order::getStatus, OrderStatus.SHIPPED.getCode())   // ← 状态再写一遍
+                .set(Order::getStatus, OrderStatus.COMPLETED.getCode()));
+        if (rows == 0) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        log.info("订单确认收货成功 -> orderId={}, buyerId={}", orderId, order.getBuyerId());
+    }
+
+
+    @Override
+    @Transactional
+    public void cancel(Long orderId) {
+        // ① 查订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BizException(CodeEnum.ORDER_NOT_FOUND);
+        }
+        // ② 校验身份：买家和卖家都能取消
+        if (!order.getBuyerId().equals(UserContext.get().getId()) && !order.getSellerId().equals(UserContext.get().getId())) {
+            throw new BizException(CodeEnum.NO_PERMISSION);
+        }
+        // ③ 校验起点状态
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode() && order.getStatus() != OrderStatus.PAID.getCode()) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        int rows = 0;
+        // ④ 改状态
+        if (order.getStatus() == OrderStatus.PENDING_PAYMENT.getCode()) {
+            rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                    .eq(Order::getId, orderId)
+                    .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())   // ← 状态再写一遍
+                    .set(Order::getStatus, OrderStatus.CANCELLED.getCode()));
+        }
+        else if (order.getStatus() == OrderStatus.PAID.getCode()) {
+            rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                    .eq(Order::getId, orderId)
+                    .eq(Order::getStatus, OrderStatus.PAID.getCode())   // ← 状态再写一遍
+                    .set(Order::getStatus, OrderStatus.CANCELLED.getCode()));
+        }
+
+        if (rows == 0) {
+            throw new BizException(CodeEnum.ORDER_STATUS_ERROR);
+        }
+        // ⑤ 把商品放回「在售」
+        productMapper.update(null, new LambdaUpdateWrapper<Product>()
+                .eq(Product::getId, order.getProductId())
+                .eq(Product::getStatus, 2)          // ⚠️ 只有「已售出」才回滚
+                .set(Product::getStatus, 1));
+
+        log.info("订单取消成功 -> orderId={}, buyerId={}", orderId, order.getBuyerId());
     }
 }

@@ -74,6 +74,7 @@ erDiagram
         bigint   user_id     FK "用户ID -> user.id"
         bigint   product_id  FK "商品ID -> product.id"
         datetime create_time    "创建时间"
+        datetime update_time    "更新时间"
     }
 
     REVIEW {

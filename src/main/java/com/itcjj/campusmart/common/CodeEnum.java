@@ -22,7 +22,8 @@ public enum CodeEnum {
     DUPLICATE_SUBMIT(2005,"请勿重复提交"),
     ORDER_NOT_FOUND(2006, "订单不存在"),
     ORDER_STATUS_ERROR(2007, "当前订单状态不允许该操作"),
-
+    ALREADY_FAVORITED(2008, "已收藏"),
+    ALREADY_UNFAVORITED(2009, "已取消收藏"),
 
 
     NOT_LOGIN(401, "请先登录");

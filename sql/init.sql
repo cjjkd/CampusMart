@@ -139,3 +139,17 @@ CREATE TABLE IF NOT EXISTS `orders`
 -- 检查建表结果
 SHOW TABLES;
 DESC `orders`;
+CREATE TABLE IF NOT EXISTS `favorite`
+(
+    `id`          BIGINT   NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
+    `user_id`     BIGINT   NOT NULL COMMENT '用户ID → user.id',
+    `product_id`  BIGINT   NOT NULL COMMENT '商品ID → product.id',
+
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_product` (`user_id`, `product_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+    COMMENT = '商品收藏表';

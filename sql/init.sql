@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS `orders`
     `update_time`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        TINYINT       NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    KEY `idx_product_id` (`product_id`),
+
 
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_order_no` (`order_no`),

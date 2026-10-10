@@ -6,8 +6,11 @@ import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.dto.ProductDTO;
 import com.itcjj.campusmart.dto.ProductSearchDTO;
 import com.itcjj.campusmart.dto.ProductUpdateDTO;
+import com.itcjj.campusmart.entity.Order;
 import com.itcjj.campusmart.entity.Product;
+import com.itcjj.campusmart.enums.OrderStatus;
 import com.itcjj.campusmart.exception.BizException;
+import com.itcjj.campusmart.mapper.OrderMapper;
 import com.itcjj.campusmart.mapper.ProductMapper;
 import com.itcjj.campusmart.service.ProductService;
 import com.itcjj.campusmart.util.UserContext;
@@ -92,6 +95,7 @@ public class ProductServiceImpl implements ProductService {
         if (!old.getSellerId().equals(UserContext.get().getId())) {
             throw new BizException(CodeEnum.NO_PERMISSION);
         }
+        assertNotTrading(dto.getId());
         Product product = new Product();
         product.setId(dto.getId());
         product.setTitle(dto.getTitle());
@@ -119,6 +123,7 @@ public class ProductServiceImpl implements ProductService {
         if (!old.getSellerId().equals(UserContext.get().getId())) {
             throw new BizException(CodeEnum.NO_PERMISSION);
         }
+        assertNotTrading(id);
         Product product = new Product();
         product.setId(id);
         product.setStatus(0);
@@ -139,6 +144,7 @@ public class ProductServiceImpl implements ProductService {
         if (!old.getSellerId().equals(UserContext.get().getId())) {
             throw new BizException(CodeEnum.NO_PERMISSION);
         }
+        assertNotTrading(id);
         int rows=productMapper.deleteById(id);
         if (rows == 0) {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
@@ -283,6 +289,22 @@ public class ProductServiceImpl implements ProductService {
                 .filter(Objects::nonNull)         // 商品可能已被删掉
                 .collect(Collectors.toList());
     }
+
+    @Autowired
+    private OrderMapper orderMapper;
+    // ProductServiceImpl 里加私有方法
+    private void assertNotTrading(Long productId) {
+        Long count = orderMapper.selectCount(new LambdaQueryWrapper<Order>()
+                .eq(Order::getProductId, productId)
+                .in(Order::getStatus,
+                        OrderStatus.PENDING_PAYMENT.getCode(),
+                        OrderStatus.PAID.getCode(),
+                        OrderStatus.SHIPPED.getCode()));
+        if (count != null && count > 0) {
+            throw new BizException(CodeEnum.PRODUCT_IN_TRADE);
+        }
+    }
+
 
 
 

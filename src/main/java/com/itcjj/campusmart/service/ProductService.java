@@ -24,5 +24,7 @@ public interface ProductService {
     List<String> uploadImages(List<MultipartFile> files);
 
     Product getDetail(Long id);
+
+    List<Product> getHistory();
 }
 

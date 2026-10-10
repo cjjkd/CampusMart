@@ -22,9 +22,8 @@ import tools.jackson.databind.ObjectMapper;
 
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -48,6 +47,13 @@ public class ProductServiceImpl implements ProductService {
     private static final Duration NULL_TTL = Duration.ofMinutes(1);
     /** 空值标记本身：Redis 存不了 null，用空串代表"这个 id 确实不存在" */
     private static final String NULL_MARK = "";
+    // ========== 浏览历史相关 ==========
+    /** 每个用户一个 key */
+    private static final String HISTORY_PREFIX = "history:";
+    /** 最多保留多少条浏览记录 */
+    private static final int HISTORY_MAX = 20;
+
+
 
 
     @Override
@@ -200,6 +206,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product getDetail(Long id) {
+        // ---------- 第 0 步：记浏览历史（必须放在查缓存之前！） ----------
+        recordHistory(id);
+
         // 拼出这个商品的缓存 key，例如 "product:detail:7"
         String cacheKey = DETAIL_KEY_PREFIX + id;
 
@@ -237,6 +246,42 @@ public class ProductServiceImpl implements ProductService {
         // ---------- 第 3 步：库里也没有 → 写"空值标记"，防穿透 ----------
         redisTemplate.opsForValue().set(cacheKey, NULL_MARK, NULL_TTL);  // 空串，只存 1 分钟
         throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
+    }
+    /** 记一次浏览：商品 id 当 member，当前时间戳当分数 */
+    private void recordHistory(Long productId) {
+        Long userId = UserContext.get().getId();
+        String key = HISTORY_PREFIX + userId;
+
+        // ① 写进去（同一个商品再来看，只会更新分数，不会多出一条）
+        redisTemplate.opsForZSet().add(key, String.valueOf(productId), System.currentTimeMillis());
+
+        // ② 只保留最近 N 条
+        redisTemplate.opsForZSet().removeRange(key, 0, -(HISTORY_MAX + 1));
+    }
+
+    @Override
+    public List<Product> getHistory() {
+        Long userId = UserContext.get().getId();
+        String key = HISTORY_PREFIX + userId;
+
+        // ① 取最近 N 个商品 id（倒序 = 时间从新到旧）
+        Set<String> idSet = redisTemplate.opsForZSet().reverseRange(key, 0, HISTORY_MAX - 1);
+        if (idSet == null || idSet.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // ② 转成 Long —— reverseRange 返回的是「有序 Set」，顺序会保留下来
+        List<Long> ids = idSet.stream().map(Long::valueOf).collect(Collectors.toList());
+
+        // ③ 批量查商品
+        Map<Long, Product> map = productMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        // ④ 按 ids 的顺序重排（selectBatchIds 不保证返回顺序！）
+        return ids.stream()
+                .map(map::get)
+                .filter(Objects::nonNull)         // 商品可能已被删掉
+                .collect(Collectors.toList());
     }
 
 

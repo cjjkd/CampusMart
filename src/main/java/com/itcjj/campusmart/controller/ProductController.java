@@ -62,5 +62,11 @@ public class ProductController {
         return Result.success(productService.getDetail(id));
     }
 
+    // 我的浏览历史（最近 20 条）
+    @GetMapping("/history")
+    public Result<List<Product>> history() {
+        return Result.success(productService.getHistory());
+    }
+
 
 }

@@ -2,6 +2,7 @@ package com.itcjj.campusmart.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.itcjj.campusmart.common.CacheKeys;
 import com.itcjj.campusmart.common.CodeEnum;
 import com.itcjj.campusmart.dto.ProductDTO;
 import com.itcjj.campusmart.dto.ProductSearchDTO;
@@ -23,10 +24,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.itcjj.campusmart.service.FileStorageService;
 import tools.jackson.databind.ObjectMapper;
 
-
-import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Slf4j
 @Service
@@ -40,21 +40,6 @@ public class ProductServiceImpl implements ProductService {
     private StringRedisTemplate redisTemplate;   // 操作 Redis 的工具
     @Autowired
     private ObjectMapper objectMapper;           // 对象 ⇄ JSON 的转换器
-
-    // ========== 缓存相关的常量：避免"魔法数字"散落在方法里 ==========
-    /** key 前缀 —— 冒号分层是 Redis 惯例，以后 KEYS product:detail:* 能批量看 */
-    private static final String DETAIL_KEY_PREFIX = "product:detail:";
-    /** 真数据的缓存时长 */
-    private static final Duration DETAIL_TTL = Duration.ofMinutes(30);
-    /** 空值标记的缓存时长 —— 必须短，因为 id 可能很快被创建出来 */
-    private static final Duration NULL_TTL = Duration.ofMinutes(1);
-    /** 空值标记本身：Redis 存不了 null，用空串代表"这个 id 确实不存在" */
-    private static final String NULL_MARK = "";
-    // ========== 浏览历史相关 ==========
-    /** 每个用户一个 key */
-    private static final String HISTORY_PREFIX = "history:";
-    /** 最多保留多少条浏览记录 */
-    private static final int HISTORY_MAX = 20;
 
 
 
@@ -110,7 +95,7 @@ public class ProductServiceImpl implements ProductService {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
         //删除缓存
-        redisTemplate.delete(DETAIL_KEY_PREFIX + dto.getId());
+        redisTemplate.delete(CacheKeys.PRODUCT_DETAIL_PREFIX + dto.getId());
         log.info("商品更新成功 -> 操作人={}, productId={}", UserContext.get().getId(), product.getId());
 
     }
@@ -132,7 +117,7 @@ public class ProductServiceImpl implements ProductService {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
         //删除缓存
-        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
+        redisTemplate.delete(CacheKeys.PRODUCT_DETAIL_PREFIX + id);
         log.info("商品下架成功 -> 操作人={}, productId={}", UserContext.get().getId(), product.getId());
     }
     @Override
@@ -150,7 +135,7 @@ public class ProductServiceImpl implements ProductService {
             throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
         }
         //删除缓存
-        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
+        redisTemplate.delete(CacheKeys.PRODUCT_DETAIL_PREFIX + id);
         log.info("商品删除成功 -> 操作人={}, productId={}", UserContext.get().getId(), id);
     }
     @Override// ProductServiceImpl
@@ -216,7 +201,7 @@ public class ProductServiceImpl implements ProductService {
         recordHistory(id);
 
         // 拼出这个商品的缓存 key，例如 "product:detail:7"
-        String cacheKey = DETAIL_KEY_PREFIX + id;
+        String cacheKey = CacheKeys.PRODUCT_DETAIL_PREFIX + id;
 
         // ---------- 第 1 步：先问 Redis，看有没有缓存 ----------
         String cached = redisTemplate.opsForValue().get(cacheKey);
@@ -245,33 +230,33 @@ public class ProductServiceImpl implements ProductService {
             redisTemplate.opsForValue().set(
                     cacheKey,
                     objectMapper.writeValueAsString(product),   // Product → JSON 字符串
-                    DETAIL_TTL);                                 // 30 分钟过期
+                    CacheKeys.PRODUCT_DETAIL_TTL);                                 // 30 分钟过期
             return product;
         }
 
         // ---------- 第 3 步：库里也没有 → 写"空值标记"，防穿透 ----------
-        redisTemplate.opsForValue().set(cacheKey, NULL_MARK, NULL_TTL);  // 空串，只存 1 分钟
+        redisTemplate.opsForValue().set(cacheKey, CacheKeys.NULL_MARK, CacheKeys.PRODUCT_DETAIL_NULL_TTL);  // 空串，只存 1 分钟
         throw new BizException(CodeEnum.PRODUCT_NOT_FOUND);
     }
     /** 记一次浏览：商品 id 当 member，当前时间戳当分数 */
     private void recordHistory(Long productId) {
         Long userId = UserContext.get().getId();
-        String key = HISTORY_PREFIX + userId;
+        String key = CacheKeys.HISTORY_PREFIX + userId;
 
         // ① 写进去（同一个商品再来看，只会更新分数，不会多出一条）
         redisTemplate.opsForZSet().add(key, String.valueOf(productId), System.currentTimeMillis());
 
         // ② 只保留最近 N 条
-        redisTemplate.opsForZSet().removeRange(key, 0, -(HISTORY_MAX + 1));
+        redisTemplate.opsForZSet().removeRange(key, 0, -(CacheKeys.PRODUCT_HISTORY_MAX + 1));
     }
 
     @Override
     public List<Product> getHistory() {
         Long userId = UserContext.get().getId();
-        String key = HISTORY_PREFIX + userId;
+        String key = CacheKeys.HISTORY_PREFIX + userId;
 
         // ① 取最近 N 个商品 id（倒序 = 时间从新到旧）
-        Set<String> idSet = redisTemplate.opsForZSet().reverseRange(key, 0, HISTORY_MAX - 1);
+        Set<String> idSet = redisTemplate.opsForZSet().reverseRange(key, 0, CacheKeys.PRODUCT_HISTORY_MAX - 1);
         if (idSet == null || idSet.isEmpty()) {
             return Collections.emptyList();
         }

@@ -1,5 +1,7 @@
 package com.itcjj.campusmart.service.impl;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.itcjj.campusmart.common.CacheKeys;
 import com.itcjj.campusmart.enums.OrderStatus;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -240,4 +243,48 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("订单取消成功 -> orderId={}, buyerId={}", orderId, order.getBuyerId());
     }
+
+    @Override
+    public List<Order> findTimeoutOrders() {
+        // ① 先算出「截止时刻」：现在往前推 15 分钟
+        LocalDateTime deadline = LocalDateTime.now().minusMinutes(CacheKeys.TIMEOUT_MINUTES);
+
+        // ② 查：还没付款 + 下单时间早于截止时刻
+        return orderMapper.selectList(new LambdaQueryWrapper<Order>()
+                .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                .lt(Order::getCreateTime, deadline)
+                .last("LIMIT " + CacheKeys.BATCH_LIMIT));
+    }
+
+    @Transactional
+    @Override
+    public void closeTimeoutOrder(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            log.warn("超时关闭时订单已不存在，跳过 -> orderId={}", orderId);
+            return;
+        }
+
+        // ① CAS 关单：只有当前还是「待付款」才关得动
+        int rows = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, orderId)
+                .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                .set(Order::getStatus, OrderStatus.CANCELLED.getCode()));
+        if (rows == 0) {
+            log.warn("订单已被其他操作处理，跳过 -> orderId={}", orderId);
+            return;
+        }
+
+        // ② 回滚商品：只有「已售出」才回滚
+        productMapper.update(null, new LambdaUpdateWrapper<Product>()
+                .eq(Product::getId, order.getProductId())
+                .eq(Product::getStatus, 2)
+                .set(Product::getStatus, 1));
+
+        // ③ 删商品详情缓存（否则缓存里还是「已售出」，最长 30 分钟不更新）
+        redisTemplate.delete(CacheKeys.PRODUCT_DETAIL_PREFIX + order.getProductId());
+
+        log.info("超时订单已关闭 -> orderId={}, buyerId={}", orderId, order.getBuyerId());
+    }
+
 }

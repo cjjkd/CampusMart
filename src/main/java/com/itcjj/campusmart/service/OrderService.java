@@ -1,6 +1,9 @@
 package com.itcjj.campusmart.service;
 
 import com.itcjj.campusmart.dto.OrderCreateDTO;
+import com.itcjj.campusmart.entity.Order;
+
+import java.util.List;
 
 public interface OrderService {
 
@@ -17,4 +20,7 @@ public interface OrderService {
 
     void cancel(Long orderId);
 
+    List<Order> findTimeoutOrders();
+
+    void closeTimeoutOrder(Long orderId);
 }
